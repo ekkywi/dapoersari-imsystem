@@ -1,0 +1,30 @@
+# Private personal notes — do not publish
+docs/private/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# Dependencies / build
+node_modules/
+apps/web/node_modules/
+apps/web/.next/
+apps/web/out/
+apps/api/bin/
+apps/api/tmp/
+dist/
+build/
+coverage/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# Go
+apps/api/vendor/
