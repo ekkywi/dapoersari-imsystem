@@ -48,11 +48,12 @@ internal/
   auth/
   warehouse/
   transfer/
-  kitchen/
+  kitchen/                   # recipes, kitchen stock, menu closing
   opname/
   history/
   activity/
-migrations/                  # versioned SQL
+  dashboard/                 # summary + low-stock alerts (rules)
+migrations/                  # versioned SQL (goose)
 ```
 
 Package boundaries follow **domain packages**. Each domain typically exposes handler, service, repository, and model surfaces.
@@ -61,12 +62,13 @@ Package boundaries follow **domain packages**. Each domain typically exposes han
 
 ```text
 src/app/(auth)/              # authentication screens
-src/app/(dashboard)/         # authenticated application shell
+src/app/(dashboard)/app/     # authenticated operator shell (/app)
 src/components/ui/           # shared UI primitives
-src/components/features/     # feature-specific UI
-src/lib/                     # API client, session helpers
-src/types/                   # shared TS types aligned with API DTOs
+src/components/features/     # shell: AuthGate, AppSidebar, …
+src/lib/                     # API clients, session, RBAC helpers
 ```
+
+Primary operator routes live under `/app` (overview, warehouse, kitchen, stock-requests, opnames, alerts, history). Navigation is role-filtered; some shared screens use `?focus=warehouse|kitchen` so Super Admin sees the correct actions per entry door.
 
 ## Cross-origin configuration
 
@@ -95,8 +97,11 @@ API JSON uses a consistent envelope: success payload under `data`, failures unde
 |--------|----------------|
 | Auth / users | Identity, roles, JWT session |
 | Warehouse | Units, categories, suppliers, items, warehouse on-hand, stock-in |
-| Kitchen | Recipes/menus, requests, receive, menu closing (later stages) |
-| Transfer / opname / history | Movements between locations, corrections, audit (later stages) |
+| Kitchen | Recipes/menus, kitchen on-hand, menu closing (usage) |
+| Transfer | Stock requests: create → approve/reject → transfer → receive |
+| Opname | Physical count vs system; confirm adjusts stock + documents variance |
+| History / activity | Stock ledger and append-only activity log |
+| Dashboard | Role-facing summary counts; rules-based low-stock alerts |
 
 Warehouse catalog and warehouse on-hand are first-class persisted concepts. Stock quantities change only through transactional movements defined in the domain model.
 
@@ -106,6 +111,7 @@ Warehouse catalog and warehouse on-hand are first-class persisted concepts. Stoc
 - Visual direction: calm navy hospitality / instrument panel — operational, not marketing SaaS.
 - Unauthenticated landing may expose non-sensitive status only; stock and reports require login.
 - Light/dark theme is supported for the operator shell.
+- Opname detail includes a printable berita acara (variance document).
 
 ## Runtime constraints
 

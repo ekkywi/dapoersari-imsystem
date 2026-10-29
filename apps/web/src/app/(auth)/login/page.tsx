@@ -45,7 +45,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (getToken()) {
-      router.replace("/dashboard");
+      router.replace("/app");
     }
   }, [router]);
 
@@ -59,7 +59,7 @@ export default function LoginPage() {
         password,
       });
       saveSession(data.token, data.user);
-      router.replace("/dashboard");
+      router.replace("/app");
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Gagal masuk";
       setError(pesanLogin(raw));

@@ -45,7 +45,23 @@ type WarehouseStock struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// Request bodies (for handler later)
+type StockIn struct {
+	ID         uuid.UUID  `json:"id"`
+	ItemID     uuid.UUID  `json:"item_id"`
+	SupplierID *uuid.UUID `json:"supplier_id,omitempty"`
+	Qty        float64    `json:"qty"`
+	Note       *string    `json:"note,omitempty"`
+	ExpiredAt  *time.Time `json:"expired_at,omitempty"`
+	CreatedBy  uuid.UUID  `json:"created_by"`
+	CreatedAt  time.Time  `json:"created_at"`
+}
+
+type StockInResult struct {
+	StockIn StockIn        `json:"stock_in"`
+	Stock   WarehouseStock `json:"stock"`
+}
+
+// Request bodies
 
 type CreateUnitRequest struct {
 	Code string `json:"code"`
@@ -68,4 +84,12 @@ type CreateItemRequest struct {
 	CategoryID *uuid.UUID `json:"category_id"`
 	UnitID     uuid.UUID  `json:"unit_id"`
 	MinStock   float64    `json:"min_stock"`
+}
+
+type CreateStockInRequest struct {
+	ItemID     uuid.UUID  `json:"item_id"`
+	SupplierID *uuid.UUID `json:"supplier_id"`
+	Qty        float64    `json:"qty"`
+	Note       *string    `json:"note"`
+	ExpiredAt  *time.Time `json:"expired_at"`
 }

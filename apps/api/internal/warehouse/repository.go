@@ -222,6 +222,14 @@ func (r *Repository) CreateItem(ctx context.Context, it Item) (Item, error) {
 		return Item{}, fmt.Errorf("init warehouse stock: %w", err)
 	}
 
+	const qKitchen = `
+		INSERT INTO kitchen_stocks (item_id, qty)
+		VALUES ($1, 0)
+	`
+	if _, err := tx.ExecContext(ctx, qKitchen, created.ID); err != nil {
+		return Item{}, fmt.Errorf("init kitchen stock: %w", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return Item{}, fmt.Errorf("commit create item: %w", err)
 	}
@@ -264,6 +272,112 @@ func (r *Repository) ListWarehouseStocks(ctx context.Context) ([]WarehouseStock,
 		var s WarehouseStock
 		if err := rows.Scan(&s.ItemID, &s.Qty, &s.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan warehouse stock: %w", err)
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) FindSupplierByID(ctx context.Context, id uuid.UUID) (Supplier, error) {
+	const q = `
+		SELECT id, name, phone, note, is_active, created_at
+		FROM suppliers
+		WHERE id = $1
+		LIMIT 1
+	`
+	var s Supplier
+	err := r.db.QueryRowContext(ctx, q, id).Scan(
+		&s.ID, &s.Name, &s.Phone, &s.Note, &s.IsActive, &s.CreatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Supplier{}, ErrNotFound
+	}
+	if err != nil {
+		return Supplier{}, fmt.Errorf("find supplier: %w", err)
+	}
+	return s, nil
+}
+
+// CreateStockIn inserts stock_in, bumps warehouse qty, and appends stock_history in one transaction.
+func (r *Repository) CreateStockIn(ctx context.Context, in StockIn) (StockInResult, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return StockInResult{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	const qIns = `
+		INSERT INTO stock_ins (item_id, supplier_id, qty, note, expired_at, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, item_id, supplier_id, qty, note, expired_at, created_by, created_at
+	`
+	var created StockIn
+	err = tx.QueryRowContext(
+		ctx, qIns,
+		in.ItemID, in.SupplierID, in.Qty, in.Note, in.ExpiredAt, in.CreatedBy,
+	).Scan(
+		&created.ID, &created.ItemID, &created.SupplierID, &created.Qty,
+		&created.Note, &created.ExpiredAt, &created.CreatedBy, &created.CreatedAt,
+	)
+	if err != nil {
+		return StockInResult{}, fmt.Errorf("insert stock_in: %w", err)
+	}
+
+	const qStock = `
+		UPDATE warehouse_stocks
+		SET qty = qty + $2,
+		    updated_at = now()
+		WHERE item_id = $1
+		RETURNING item_id, qty, updated_at
+	`
+	var stock WarehouseStock
+	err = tx.QueryRowContext(ctx, qStock, created.ItemID, created.Qty).
+		Scan(&stock.ItemID, &stock.Qty, &stock.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return StockInResult{}, ErrNotFound
+	}
+	if err != nil {
+		return StockInResult{}, fmt.Errorf("update warehouse stock: %w", err)
+	}
+
+	const qHist = `
+		INSERT INTO stock_history (
+			item_id, location, delta, qty_after, reason, ref_type, ref_id, created_by
+		) VALUES ($1, 'warehouse', $2, $3, 'stock_in', 'stock_in', $4, $5)
+	`
+	if _, err := tx.ExecContext(
+		ctx, qHist,
+		created.ItemID, created.Qty, stock.Qty, created.ID, created.CreatedBy,
+	); err != nil {
+		return StockInResult{}, fmt.Errorf("insert stock_history: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return StockInResult{}, fmt.Errorf("commit stock_in: %w", err)
+	}
+	return StockInResult{StockIn: created, Stock: stock}, nil
+}
+
+func (r *Repository) ListStockIns(ctx context.Context) ([]StockIn, error) {
+	const q = `
+		SELECT id, item_id, supplier_id, qty, note, expired_at, created_by, created_at
+		FROM stock_ins
+		ORDER BY created_at DESC
+	`
+	rows, err := r.db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("list stock_ins: %w", err)
+	}
+	defer rows.Close()
+
+	var out []StockIn
+	for rows.Next() {
+		var s StockIn
+		if err := rows.Scan(
+			&s.ID, &s.ItemID, &s.SupplierID, &s.Qty, &s.Note,
+			&s.ExpiredAt, &s.CreatedBy, &s.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan stock_in: %w", err)
 		}
 		out = append(out, s)
 	}

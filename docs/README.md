@@ -7,12 +7,21 @@ These documents describe **what the application is** — scope, architecture, do
 | Document | Description |
 |----------|-------------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System topology, deploy targets, monorepo layout, auth model |
-| [DOMAIN.md](./DOMAIN.md) | Business rules, stock flows, recipe bridge |
-| [ROADMAP.md](./ROADMAP.md) | Phased product capabilities (P0–P2) |
+| [DOMAIN.md](./DOMAIN.md) | Business rules, stock flows, recipe bridge, alerts |
+| [ROADMAP.md](./ROADMAP.md) | Phased product capabilities (P0–P2) and delivery status |
 
 ## Scope statement
 
 This repository implements a dual-location inventory system (Warehouse ↔ Kitchen). Customer POS, cashier flows, and accounting are **out of scope**. Smart capabilities are **rules-based** (alerts, reorder hints)—not ML/AI.
+
+## Current product surface (operator)
+
+| Area | Highlights |
+|------|------------|
+| Gudang | Masters, stok, stok masuk, antrian permintaan, opname |
+| Dapur | Resep/menu, stok dapur, permintaan, penutupan menu, opname |
+| Audit | Riwayat mutasi + aktivitas; dokumen opname dapat dicetak |
+| Operasional | Ringkasan angka; alert stok (min-stock, in-transit dapur) |
 
 ## Applications
 

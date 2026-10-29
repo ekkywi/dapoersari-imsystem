@@ -6,9 +6,9 @@ Dual-location inventory system (Warehouse ↔ Kitchen) for restaurant operations
 
 ## What it is
 
-Operators manage ingredients across **gudang** and **dapur**, request stock via recipes/menus, transfer and receive in item units, close shifts without a POS, and correct drift with opname. “Smart” behavior is rules-based (alerts, reorder hints)—not ML/AI.
+Operators manage ingredients across **gudang** and **dapur**, request stock via recipes/menus, transfer and receive in item units, close shifts without a POS, correct drift with opname (printable variance document), and review audit history. “Smart” behavior is rules-based (low-stock alerts with kitchen in-transit awareness)—not ML/AI.
 
-Customer POS, cashier, and accounting are out of scope.
+Customer POS, cashier, and accounting are out of scope. See [docs/ROADMAP.md](./docs/ROADMAP.md) for delivered vs planned capabilities.
 
 ## Documentation
 

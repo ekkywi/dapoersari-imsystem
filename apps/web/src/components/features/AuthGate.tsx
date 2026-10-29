@@ -1,25 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { AppSidebar } from "@/components/features/AppSidebar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { ToastHost } from "@/components/ui/ToastHost";
 import { AuthUser, clearSession, getToken, getUser } from "@/lib/auth";
+import {
+  canAccessOpnames,
+  canAccessStockRequests,
+  navKeysForRole,
+  roleLabel,
+  type NavKey,
+} from "@/lib/rbac";
 
-function roleLabel(role: string): string {
-  switch (role) {
-    case "super_admin":
-      return "Super Admin";
-    case "admin_gudang":
-      return "Admin Gudang";
-    case "admin_kitchen":
-      return "Admin Dapur";
-    default:
-      return role.replaceAll("_", " ");
+const PATH_TO_NAV: { prefix: string; key: NavKey }[] = [
+  { prefix: "/app/warehouse/units", key: "units" },
+  { prefix: "/app/warehouse/categories", key: "categories" },
+  { prefix: "/app/warehouse/suppliers", key: "suppliers" },
+  { prefix: "/app/warehouse/items", key: "items" },
+  { prefix: "/app/warehouse/stocks", key: "stocks" },
+  { prefix: "/app/warehouse/stock-ins", key: "stock-ins" },
+  { prefix: "/app/kitchen/menus", key: "menus" },
+  { prefix: "/app/kitchen/stocks", key: "kitchen-stocks" },
+  { prefix: "/app/kitchen/closings", key: "closings" },
+  { prefix: "/app/history", key: "history" },
+  { prefix: "/app/alerts", key: "alerts" },
+  { prefix: "/app", key: "overview" },
+];
+
+function canAccessPath(pathname: string, role: string): boolean {
+  if (
+    pathname === "/app/stock-requests" ||
+    pathname.startsWith("/app/stock-requests/")
+  ) {
+    return canAccessStockRequests(role);
   }
+  if (pathname === "/app/opnames" || pathname.startsWith("/app/opnames/")) {
+    return canAccessOpnames(role);
+  }
+  for (const row of PATH_TO_NAV) {
+    if (pathname === row.prefix || pathname.startsWith(`${row.prefix}/`)) {
+      return navKeysForRole(role).has(row.key);
+    }
+  }
+  return true;
 }
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -33,6 +63,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     setUser(sessionUser);
     setReady(true);
   }, [router]);
+
+  useEffect(() => {
+    if (!ready || !user) return;
+    if (!canAccessPath(pathname, user.role)) {
+      router.replace("/app");
+    }
+  }, [ready, user, pathname, router]);
 
   function logout() {
     clearSession();
@@ -49,25 +86,25 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="shell">
-      <header className="shell-topbar">
-        <div className="shell-brand-block">
-          <span className="shell-brand-mark" aria-hidden />
-          <div>
-            <p className="shell-brand">Dapoer Sari</p>
-            <div className="shell-meta">
-              <span className="shell-meta-name">{user.full_name}</span>
-              <span className="badge badge-neutral">{roleLabel(user.role)}</span>
-            </div>
+      <Suspense fallback={<aside className="shell-sidebar" aria-hidden />}>
+        <AppSidebar role={user.role} />
+      </Suspense>
+      <div className="shell-body">
+        <header className="shell-topbar">
+          <div className="shell-meta">
+            <span className="shell-meta-name">{user.full_name}</span>
+            <span className="badge badge-neutral">{roleLabel(user.role)}</span>
           </div>
-        </div>
-        <div className="shell-topbar-actions">
-          <ThemeToggle />
-          <button type="button" className="btn btn-ghost" onClick={logout}>
-            Keluar
-          </button>
-        </div>
-      </header>
-      <div className="shell-main">{children}</div>
+          <div className="shell-topbar-actions">
+            <ThemeToggle />
+            <button type="button" className="btn btn-ghost" onClick={logout}>
+              Keluar
+            </button>
+          </div>
+        </header>
+        <div className="shell-main">{children}</div>
+      </div>
+      <ToastHost />
     </div>
   );
 }

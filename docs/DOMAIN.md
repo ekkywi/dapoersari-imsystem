@@ -12,6 +12,8 @@ Manage ingredient inventory across **Warehouse** and **Kitchen**, with auditable
 | Admin Gudang | Suppliers, catalog items, stock-in, approve/transfer, warehouse opname |
 | Admin Kitchen | Recipes, stock requests, receive confirmation, menu closing / usage, kitchen opname |
 
+Shared screens (e.g. stock requests, opname) may be opened from a **warehouse** or **kitchen** navigation door. Mutation actions in the UI follow the door plus role, so Super Admin does not see kitchen “submit request” controls inside the warehouse queue view.
+
 ## Core concepts
 
 ### Warehouse catalog
@@ -26,9 +28,9 @@ Operational masters that define what can be stocked and ordered:
 | Item | Material master: SKU, name, unit, optional category, `min_stock` |
 | Warehouse stock | On-hand quantity at the warehouse per item |
 
-Creating a catalog item initializes warehouse on-hand at zero. Quantity increases only through stock movements (e.g. supplier stock-in), never by editing the balance field directly.
+Creating a catalog item initializes warehouse on-hand at zero (and a kitchen stock row at zero). Quantity increases only through stock movements (e.g. supplier stock-in), never by editing the balance field directly.
 
-Kitchen on-hand is a separate balance (dual-location); it is introduced with transfer/receive flows.
+Kitchen on-hand is a separate balance (dual-location).
 
 ### Catalog item
 
@@ -52,9 +54,11 @@ Persisted shape always includes:
 
 Expanded lines are **snapshotted** at submit time.
 
+Lifecycle: `submitted` → `approved` | `rejected` → `transferred` → `received`.
+
 ### Transfer & receive
 
-Physical movement is always in item units. Kitchen receive confirmation increases kitchen stock per item. Package quantity is contextual metadata, not a stock UoM.
+Physical movement is always in item units. Transfer decreases warehouse stock; kitchen receive confirmation increases kitchen stock per item. Package quantity is contextual metadata, not a stock UoM.
 
 ### Menu closing (usage without POS)
 
@@ -62,11 +66,13 @@ Per shift or per day, Kitchen submits menus produced/sold. The system explodes r
 
 ### Opname
 
-Physical count vs system quantity per item (and location). Confirmed variance adjusts stock and writes history. Opname **corrects** drift; it does not replace routine usage posting.
+Physical count vs system quantity per item (and location). A draft snapshots system qty; confirmation adjusts stock to physical qty and writes history. Opname **corrects** drift; it does not replace routine usage posting.
+
+Each confirmed (or draft) opname remains a **document**: system vs physical vs variance per line, with a printable berita acara for audit.
 
 ### History & activity
 
-Every stock delta writes stock history. User actions write append-only activity logs (not editable/deletable through normal application APIs).
+Every stock delta writes stock history (`reason`, optional `ref_type` / `ref_id`). User actions write append-only activity logs (not editable/deletable through normal application APIs). History UI can deep-link to related documents (opname, request, closing).
 
 ## Stock movement matrix
 
@@ -80,20 +86,29 @@ Every stock delta writes stock history. User actions write append-only activity 
 
 ## Document / UI contract
 
-Screens and printable documents for a request must show:
+Screens and printable documents for a **stock request** must show:
 
 1. **Package summary** — each menu and paket quantity  
 2. **Item detail** — merged ingredient requirements with units  
+
+Screens and printable documents for an **opname** must show:
+
+1. Document meta — location, status, timestamps, note  
+2. Line detail — system qty, physical qty, variance  
+3. Summary of items with non-zero variance (default print focus)
 
 ## Smart inventory (non-AI)
 
 Rules operate on persisted transactions:
 
-- Low-stock alert when on-hand (and optionally in-transit policy) ≤ `min_stock`
-- Optional expiry awareness when stock-in records `expired_at` / batch data
-- Reorder hints from average usage × (`order_interval_days` + `lead_time_days`) + buffer
+- **Low-stock alert** when effective stock ≤ `min_stock` for active items  
+  - Warehouse: effective = on-hand  
+  - Kitchen: effective = on-hand + **in-transit** (lines on requests with status `transferred`, not yet received)  
+- Severity: critical when effective ≤ 0 or ≤ half of min; otherwise low  
+- Demo defaults: `lead_time_days = 3`, `order_interval_days = 7` (configuration values, not hardcoded restaurant hours)  
+- Optional later: expiry from stock-in `expired_at`; reorder quantity hints from usage × horizon + buffer  
 
-Operational schedules (shift hours, request cutoff) are **configuration**, not hardcoded business constants.
+Dashboard summary exposes queue counts (pending approval, awaiting transfer, in-transit requests) alongside low-stock totals.
 
 ## Explicit non-goals (v1)
 

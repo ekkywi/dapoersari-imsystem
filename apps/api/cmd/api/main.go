@@ -6,10 +6,17 @@ import (
 	"net/http"
 	"time"
 
+	"dapoersari-imsystem/apps/api/internal/activity"
 	"dapoersari-imsystem/apps/api/internal/auth"
 	"dapoersari-imsystem/apps/api/internal/config"
+	"dapoersari-imsystem/apps/api/internal/dashboard"
 	"dapoersari-imsystem/apps/api/internal/database"
+	"dapoersari-imsystem/apps/api/internal/history"
 	"dapoersari-imsystem/apps/api/internal/httpapi"
+	"dapoersari-imsystem/apps/api/internal/kitchen"
+	"dapoersari-imsystem/apps/api/internal/opname"
+	"dapoersari-imsystem/apps/api/internal/transfer"
+	"dapoersari-imsystem/apps/api/internal/warehouse"
 )
 
 func main() {
@@ -28,10 +35,50 @@ func main() {
 	defer db.Close()
 	log.Printf("database: connected")
 
-	repo := auth.NewRepository(db)
-	svc := auth.NewService(repo, cfg.JWTSecret)
-	h := auth.NewHandler(svc)
-	handler := httpapi.NewRouter(cfg.CORSOrigin, h, svc)
+	authRepo := auth.NewRepository(db)
+	authSvc := auth.NewService(authRepo, cfg.JWTSecret)
+	authHandler := auth.NewHandler(authSvc)
+
+	warehouseRepo := warehouse.NewRepository(db)
+	warehouseSvc := warehouse.NewService(warehouseRepo)
+	warehouseHandler := warehouse.NewHandler(warehouseSvc)
+
+	kitchenRepo := kitchen.NewRepository(db)
+	kitchenSvc := kitchen.NewService(kitchenRepo)
+	kitchenHandler := kitchen.NewHandler(kitchenSvc)
+
+	transferRepo := transfer.NewRepository(db)
+	transferSvc := transfer.NewService(transferRepo, kitchenSvc)
+	transferHandler := transfer.NewHandler(transferSvc)
+
+	opnameRepo := opname.NewRepository(db)
+	opnameSvc := opname.NewService(opnameRepo)
+	opnameHandler := opname.NewHandler(opnameSvc)
+
+	historyRepo := history.NewRepository(db)
+	historySvc := history.NewService(historyRepo)
+	historyHandler := history.NewHandler(historySvc)
+
+	activityRepo := activity.NewRepository(db)
+	activitySvc := activity.NewService(activityRepo)
+	activityHandler := activity.NewHandler(activitySvc)
+
+	dashboardRepo := dashboard.NewRepository(db)
+	dashboardSvc := dashboard.NewService(dashboardRepo)
+	dashboardHandler := dashboard.NewHandler(dashboardSvc)
+
+	handler := httpapi.NewRouter(
+		cfg.CORSOrigin,
+		authHandler,
+		authSvc,
+		warehouseHandler,
+		kitchenHandler,
+		transferHandler,
+		opnameHandler,
+		historyHandler,
+		activityHandler,
+		dashboardHandler,
+	)
 
 	addr := "0.0.0.0:" + cfg.Port
 	server := &http.Server{

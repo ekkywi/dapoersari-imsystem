@@ -40,7 +40,7 @@ If `docs/private/` is missing on this machine, ask the user to restore it (USB/c
 
 ## Progress
 
-Trust `docs/private/STATUS.md` when available. Typical mid-Tahap-2 state: migration `00002` + `warehouse` model/repository done → continue `service.go` / handler / routes / stock-in / FE. Do not re-scaffold auth/login or remake `00002` if already applied.
+Trust `docs/private/STATUS.md` when available. **Tahap 0–5 done** (P0 + thin alerts/dashboard; migrations through `00005`). Do not re-scaffold auth or remake applied migrations. Next work is optional P1+ (config UI, reorder hints, deploy) unless STATUS says otherwise.
 
 ## Folder layout (do not invent Nest modules)
 
