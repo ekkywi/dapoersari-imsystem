@@ -42,13 +42,14 @@ type StockRequestPackage struct {
 }
 
 type StockRequestLine struct {
-	ID        uuid.UUID `json:"id"`
-	RequestID uuid.UUID `json:"request_id"`
-	ItemID    uuid.UUID `json:"item_id"`
-	ItemSKU   string    `json:"item_sku"`
-	ItemName  string    `json:"item_name"`
-	UnitCode  string    `json:"unit_code"`
-	Qty       float64   `json:"qty"`
+	ID           uuid.UUID `json:"id"`
+	RequestID    uuid.UUID `json:"request_id"`
+	ItemID       uuid.UUID `json:"item_id"`
+	ItemSKU      string    `json:"item_sku"`
+	ItemName     string    `json:"item_name"`
+	UnitCode     string    `json:"unit_code"`
+	CategoryName *string   `json:"category_name,omitempty"`
+	Qty          float64   `json:"qty"`
 }
 
 type CreateRequestPackageInput struct {

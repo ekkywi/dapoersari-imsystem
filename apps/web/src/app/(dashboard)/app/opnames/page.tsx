@@ -167,10 +167,7 @@ function OpnamesContent() {
         <div className="page-header-text">
           <p className="section-label">{sectionLabel}</p>
           <h1 className="page-title">{title}</h1>
-          <p className="lede">
-            Bandingkan hitung fisik dengan sistem. Konfirmasi menyesuaikan stok
-            dan mencatat selisih.
-          </p>
+          <p className="lede">Hitung fisik versus stok sistem.</p>
         </div>
       </header>
 
@@ -207,9 +204,7 @@ function OpnamesContent() {
         ) : filtered.length === 0 ? (
           <div className="si-empty">
             <p className="si-empty-title">Belum ada opname</p>
-            <p className="si-empty-desc">
-              Buat draf, isi qty fisik, lalu konfirmasi untuk menyesuaikan stok.
-            </p>
+            <p className="si-empty-desc">Belum ada dokumen opname.</p>
           </div>
         ) : (
           <div className="data-table-wrap">
@@ -257,7 +252,7 @@ function OpnamesContent() {
       <Drawer
         open={drawerOpen}
         title="Buat opname"
-        description="Qty sistem di-snapshot saat draf dibuat. Ubah qty fisik sesuai hitungan."
+        description="Isi qty fisik per item."
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}

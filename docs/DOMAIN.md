@@ -88,14 +88,22 @@ Every stock delta writes stock history (`reason`, optional `ref_type` / `ref_id`
 
 Screens and printable documents for a **stock request** must show:
 
-1. **Package summary** — each menu and paket quantity  
-2. **Item detail** — merged ingredient requirements with units  
+1. Document meta — id, status, timestamps, note (and reject reason if rejected)  
+2. **Package summary** — each menu and paket quantity  
+3. **Item detail** — merged ingredient requirements with units  
+4. Signature blocks appropriate to kitchen / warehouse handoff  
 
 Screens and printable documents for an **opname** must show:
 
 1. Document meta — location, status, timestamps, note  
 2. Line detail — system qty, physical qty, variance  
 3. Summary of items with non-zero variance (default print focus)
+
+Screens and printable documents for **warehouse stock-in** must show:
+
+1. Document meta — id, timestamps, supplier, note, optional expiry  
+2. Line detail — item (SKU/name), unit, qty  
+3. Signature blocks for receiving clerk / acknowledging party  
 
 ## Smart inventory (non-AI)
 

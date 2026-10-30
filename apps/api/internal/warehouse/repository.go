@@ -383,3 +383,34 @@ func (r *Repository) ListStockIns(ctx context.Context) ([]StockIn, error) {
 	}
 	return out, rows.Err()
 }
+
+func (r *Repository) FindStockInByID(ctx context.Context, id uuid.UUID) (StockInDetail, error) {
+	const q = `
+		SELECT
+			si.id, si.item_id, si.supplier_id, si.qty, si.note, si.expired_at,
+			si.created_by, si.created_at,
+			i.sku, i.name, u.code, c.name,
+			s.name
+		FROM stock_ins si
+		INNER JOIN items i ON i.id = si.item_id
+		INNER JOIN units u ON u.id = i.unit_id
+		LEFT JOIN categories c ON c.id = i.category_id
+		LEFT JOIN suppliers s ON s.id = si.supplier_id
+		WHERE si.id = $1
+		LIMIT 1
+	`
+	var d StockInDetail
+	err := r.db.QueryRowContext(ctx, q, id).Scan(
+		&d.ID, &d.ItemID, &d.SupplierID, &d.Qty, &d.Note, &d.ExpiredAt,
+		&d.CreatedBy, &d.CreatedAt,
+		&d.ItemSKU, &d.ItemName, &d.UnitCode, &d.CategoryName,
+		&d.SupplierName,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return StockInDetail{}, ErrNotFound
+	}
+	if err != nil {
+		return StockInDetail{}, fmt.Errorf("find stock_in: %w", err)
+	}
+	return d, nil
+}

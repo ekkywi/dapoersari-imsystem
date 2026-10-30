@@ -81,7 +81,7 @@ export default function SuppliersPage() {
         <div className="page-header-text">
           <p className="section-label">Master gudang</p>
           <h1 className="page-title">Pemasok</h1>
-          <p className="lede">Master pemasok untuk pencatatan stok masuk.</p>
+          <p className="lede">Daftar pemasok.</p>
         </div>
       </header>
 
@@ -127,8 +127,8 @@ export default function SuppliersPage() {
             </p>
             <p className="si-empty-desc">
               {rows.length === 0
-                ? "Tambah pemasok untuk melengkapi stok masuk."
-                : "Coba ubah kata kunci pencarian."}
+                ? "Belum ada data."
+                : "Tidak cocok dengan pencarian."}
             </p>
           </div>
         ) : (
@@ -164,7 +164,7 @@ export default function SuppliersPage() {
       <Drawer
         open={drawerOpen}
         title="Tambah pemasok"
-        description="Data kontak opsional boleh dikosongkan."
+        description="Nama dan kontak."
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}

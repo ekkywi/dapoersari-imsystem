@@ -76,6 +76,7 @@ func NewRouter(
 	mux.Handle("GET /api/v1/warehouse/stocks", authOnly(warehouseHandler.ListWarehouseStocks))
 	mux.Handle("GET /api/v1/warehouse/stocks/{itemID}", authOnly(warehouseHandler.GetWarehouseStock))
 	mux.Handle("GET /api/v1/warehouse/stock-ins", authOnly(warehouseHandler.ListStockIns))
+	mux.Handle("GET /api/v1/warehouse/stock-ins/{stockInID}", authOnly(warehouseHandler.GetStockIn))
 	mux.Handle("POST /api/v1/warehouse/stock-ins", warehouseWrite(warehouseHandler.CreateStockIn))
 
 	// Kitchen — recipes + kitchen stock + closing

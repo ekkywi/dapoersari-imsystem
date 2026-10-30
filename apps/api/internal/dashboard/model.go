@@ -25,6 +25,7 @@ type LowStockAlert struct {
 	SKU          string    `json:"sku"`
 	Name         string    `json:"name"`
 	UnitCode     string    `json:"unit_code"`
+	CategoryName *string   `json:"category_name,omitempty"`
 	Location     string    `json:"location"`
 	Qty          float64   `json:"qty"`
 	InTransit    float64   `json:"in_transit"`

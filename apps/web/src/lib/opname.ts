@@ -7,6 +7,7 @@ export type OpnameLine = {
   item_sku: string;
   item_name: string;
   unit_code: string;
+  category_name?: string | null;
   system_qty: number;
   physical_qty: number;
   variance: number;

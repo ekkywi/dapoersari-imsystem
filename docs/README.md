@@ -20,7 +20,7 @@ This repository implements a dual-location inventory system (Warehouse ↔ Kitch
 |------|------------|
 | Gudang | Masters, stok, stok masuk, antrian permintaan, opname |
 | Dapur | Resep/menu, stok dapur, permintaan, penutupan menu, opname |
-| Audit | Riwayat mutasi + aktivitas; dokumen opname dapat dicetak |
+| Audit | Riwayat mutasi + aktivitas; BA opname, permintaan stok, stok masuk dapat dicetak |
 | Operasional | Ringkasan angka; alert stok (min-stock, in-transit dapur) |
 
 ## Applications

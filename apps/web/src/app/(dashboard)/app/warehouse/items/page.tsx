@@ -112,9 +112,7 @@ export default function ItemsPage() {
         <div className="page-header-text">
           <p className="section-label">Master gudang</p>
           <h1 className="page-title">Item</h1>
-          <p className="lede">
-            Katalog bahan. Stok gudang diinisialisasi 0 saat item dibuat.
-          </p>
+          <p className="lede">Katalog bahan gudang.</p>
         </div>
       </header>
 
@@ -171,9 +169,9 @@ export default function ItemsPage() {
             <p className="si-empty-desc">
               {rows.length === 0
                 ? units.length === 0
-                  ? "Buat satuan di menu Satuan sebelum menambah item."
-                  : "Tambah item untuk mulai mencatat stok."
-                : "Coba ubah kata kunci pencarian."}
+                  ? "Belum ada satuan."
+                  : "Belum ada data."
+                : "Tidak cocok dengan pencarian."}
             </p>
           </div>
         ) : (
@@ -221,7 +219,7 @@ export default function ItemsPage() {
       <Drawer
         open={drawerOpen}
         title="Tambah item"
-        description="SKU unik, satuan wajib, kategori opsional."
+        description="SKU, nama, satuan, kategori."
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}

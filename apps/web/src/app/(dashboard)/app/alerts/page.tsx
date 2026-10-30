@@ -45,6 +45,7 @@ function AlertsContent() {
       (r) =>
         r.sku.toLowerCase().includes(q) ||
         r.name.toLowerCase().includes(q) ||
+        (r.category_name ?? "").toLowerCase().includes(q) ||
         r.location.toLowerCase().includes(q),
     );
   }, [rows, query]);
@@ -56,8 +57,7 @@ function AlertsContent() {
           <p className="section-label">Operasional</p>
           <h1 className="page-title">Alert stok</h1>
           <p className="lede">
-            Item dengan effective stock ≤ min-stock. Dapur memperhitungkan
-            barang dalam perjalanan (sudah ditransfer, belum diterima).
+            Item di bawah atau sama dengan stok minimum.
           </p>
         </div>
         <div className="page-header-actions">
@@ -120,9 +120,7 @@ function AlertsContent() {
         ) : filtered.length === 0 ? (
           <div className="si-empty">
             <p className="si-empty-title">Tidak ada alert</p>
-            <p className="si-empty-desc">
-              Semua item aktif berada di atas ambang min-stock (effective).
-            </p>
+            <p className="si-empty-desc">Tidak ada item di bawah stok minimum.</p>
           </div>
         ) : (
           <div className="data-table-wrap">
@@ -133,6 +131,7 @@ function AlertsContent() {
                   <th>Lokasi</th>
                   <th>SKU</th>
                   <th>Nama</th>
+                  <th>Kategori</th>
                   <th>On-hand</th>
                   <th>In-transit</th>
                   <th>Effective</th>
@@ -159,6 +158,7 @@ function AlertsContent() {
                       <strong>{r.sku}</strong>
                     </td>
                     <td>{r.name}</td>
+                    <td>{r.category_name || "—"}</td>
                     <td>{r.qty}</td>
                     <td>{r.in_transit}</td>
                     <td>{r.effective_qty}</td>

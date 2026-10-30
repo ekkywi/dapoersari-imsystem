@@ -17,6 +17,7 @@ export type LowStockAlert = {
   sku: string;
   name: string;
   unit_code: string;
+  category_name?: string | null;
   location: string;
   qty: number;
   in_transit: number;

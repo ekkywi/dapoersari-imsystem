@@ -22,6 +22,27 @@ function formatDateTime(iso: string): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+function shortId(id: string): string {
+  return id.slice(0, 8).toUpperCase();
+}
+
+function statusFootnote(status: string): string {
+  switch (status) {
+    case "submitted":
+      return "Status: diajukan. Menunggu persetujuan gudang.";
+    case "approved":
+      return "Status: disetujui. Menunggu pengiriman dari gudang.";
+    case "transferred":
+      return "Status: ditransfer. Menunggu konfirmasi terima dapur.";
+    case "received":
+      return "Status: diterima. Stok dapur sudah bertambah.";
+    case "rejected":
+      return "Status: ditolak.";
+    default:
+      return `Status: ${status}`;
+  }
+}
+
 function StockRequestDetailContent() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
@@ -95,28 +116,34 @@ function StockRequestDetailContent() {
 
   const sectionLabel =
     focus === "warehouse" ? "Gudang" : focus === "kitchen" ? "Dapur" : "Transfer";
+  const packages = req.packages ?? [];
+  const lines = req.lines ?? [];
 
   return (
     <div className="si-page">
-      <header className="si-page-header">
+      <header className="si-page-header no-print">
         <div className="page-header-text">
           <p className="section-label">{sectionLabel}</p>
-          <h1 className="page-title">Detail permintaan</h1>
+          <h1 className="page-title">Dokumen permintaan</h1>
           <p className="lede">
-            Diajukan {formatDateTime(req.created_at)} ·{" "}
-            <span className="badge badge-neutral">
-              {requestStatusLabel(req.status)}
-            </span>
+            No. {shortId(req.id)} · {requestStatusLabel(req.status)}
           </p>
         </div>
         <div className="page-header-actions">
           <Link className="btn btn-ghost" href={listHref}>
             Kembali
           </Link>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => window.print()}
+          >
+            Cetak
+          </button>
         </div>
       </header>
 
-      <div className="si-toolbar">
+      <div className="si-toolbar no-print">
         <div className="si-toolbar-meta">
           <p className="si-count">{req.note || "Tanpa catatan"}</p>
         </div>
@@ -183,26 +210,95 @@ function StockRequestDetailContent() {
         </div>
       </div>
 
-      <section className="si-table-card">
-        <div style={{ padding: "0.75rem 1rem 0" }}>
-          <h2 className="panel-title">Ringkasan paket</h2>
-        </div>
-        {(req.packages?.length ?? 0) === 0 ? (
-          <div className="si-empty">
-            <p className="muted">Tidak ada paket menu (permintaan by item).</p>
+      <article className="si-doc" id="request-print">
+        <header className="si-doc-kop">
+          <p className="si-doc-brand">Dapoer Sari</p>
+          <p className="si-doc-org">Sistem manajemen inventaris</p>
+        </header>
+
+        <h2 className="si-doc-title">Berita acara permintaan stok</h2>
+
+        <dl className="si-doc-meta-grid">
+          <div className="si-doc-meta-row">
+            <dt>Nomor</dt>
+            <dd>{shortId(req.id)}</dd>
           </div>
+          <div className="si-doc-meta-row">
+            <dt>Status</dt>
+            <dd>{requestStatusLabel(req.status)}</dd>
+          </div>
+          <div className="si-doc-meta-row">
+            <dt>Diajukan</dt>
+            <dd>{formatDateTime(req.created_at)}</dd>
+          </div>
+          {req.approved_at ? (
+            <div className="si-doc-meta-row">
+              <dt>Disetujui</dt>
+              <dd>{formatDateTime(req.approved_at)}</dd>
+            </div>
+          ) : null}
+          {req.transferred_at ? (
+            <div className="si-doc-meta-row">
+              <dt>Ditransfer</dt>
+              <dd>{formatDateTime(req.transferred_at)}</dd>
+            </div>
+          ) : null}
+          {req.received_at ? (
+            <div className="si-doc-meta-row">
+              <dt>Diterima</dt>
+              <dd>{formatDateTime(req.received_at)}</dd>
+            </div>
+          ) : null}
+          {req.rejected_at ? (
+            <div className="si-doc-meta-row">
+              <dt>Ditolak</dt>
+              <dd>{formatDateTime(req.rejected_at)}</dd>
+            </div>
+          ) : null}
+        </dl>
+
+        <p className="si-doc-lead">
+          Pada tanggal {formatDateTime(req.created_at)} dapur mengajukan
+          permintaan stok kepada gudang dengan rincian paket dan item
+          sebagaimana tercantum dalam berita acara ini.
+        </p>
+
+        {req.note ? (
+          <p className="si-doc-note">
+            <strong>Catatan:</strong> {req.note}
+          </p>
+        ) : null}
+
+        {req.reject_reason ? (
+          <p className="si-doc-note">
+            <strong>Alasan penolakan:</strong> {req.reject_reason}
+          </p>
+        ) : null}
+
+        <p className="si-doc-summary-line">
+          <strong>Ringkasan:</strong> {packages.length} paket menu ·{" "}
+          {lines.length} baris item
+        </p>
+
+        <h3 className="si-doc-section-title">Ringkasan paket</h3>
+        {packages.length === 0 ? (
+          <p className="si-doc-note muted">
+            Tidak ada paket menu (permintaan by item).
+          </p>
         ) : (
-          <div className="data-table-wrap">
+          <div className="data-table-wrap si-doc-table">
             <table className="data-table">
               <thead>
                 <tr>
+                  <th className="si-doc-col-num">No</th>
                   <th>Menu</th>
                   <th>Qty paket</th>
                 </tr>
               </thead>
               <tbody>
-                {req.packages!.map((p) => (
+                {packages.map((p, i) => (
                   <tr key={p.id}>
+                    <td className="si-doc-col-num">{i + 1}</td>
                     <td>{p.menu_name}</td>
                     <td>{p.qty_paket}</td>
                   </tr>
@@ -211,29 +307,29 @@ function StockRequestDetailContent() {
             </table>
           </div>
         )}
-      </section>
 
-      <section className="si-table-card">
-        <div style={{ padding: "0.75rem 1rem 0" }}>
-          <h2 className="panel-title">Rincian item (snapshot)</h2>
-        </div>
-        <div className="data-table-wrap">
+        <h3 className="si-doc-section-title">Rincian item</h3>
+        <div className="data-table-wrap si-doc-table">
           <table className="data-table">
             <thead>
               <tr>
+                <th className="si-doc-col-num">No</th>
                 <th>SKU</th>
                 <th>Nama</th>
+                <th>Kategori</th>
                 <th>Satuan</th>
                 <th>Qty</th>
               </tr>
             </thead>
             <tbody>
-              {(req.lines ?? []).map((l) => (
+              {lines.map((l, i) => (
                 <tr key={l.id}>
+                  <td className="si-doc-col-num">{i + 1}</td>
                   <td>
                     <strong>{l.item_sku}</strong>
                   </td>
                   <td>{l.item_name}</td>
+                  <td>{l.category_name || "—"}</td>
                   <td>{l.unit_code}</td>
                   <td>{l.qty}</td>
                 </tr>
@@ -241,7 +337,32 @@ function StockRequestDetailContent() {
             </tbody>
           </table>
         </div>
-      </section>
+
+        <p className="si-doc-closing">
+          {statusFootnote(req.status)} Demikian berita acara ini dibuat untuk
+          dipergunakan sebagaimana mestinya.
+        </p>
+
+        <footer className="si-doc-foot">
+          <div className="si-doc-signs is-triple">
+            <div>
+              <p className="si-doc-sign-label">Pemohon (dapur)</p>
+              <p className="si-doc-sign-line">________________</p>
+              <p className="si-doc-sign-caption">Nama &amp; tanda tangan</p>
+            </div>
+            <div>
+              <p className="si-doc-sign-label">Gudang</p>
+              <p className="si-doc-sign-line">________________</p>
+              <p className="si-doc-sign-caption">Nama &amp; tanda tangan</p>
+            </div>
+            <div>
+              <p className="si-doc-sign-label">Penerima (dapur)</p>
+              <p className="si-doc-sign-line">________________</p>
+              <p className="si-doc-sign-caption">Nama &amp; tanda tangan</p>
+            </div>
+          </div>
+        </footer>
+      </article>
     </div>
   );
 }

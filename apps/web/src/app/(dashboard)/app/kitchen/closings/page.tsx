@@ -123,10 +123,7 @@ export default function ClosingsPage() {
         <div className="page-header-text">
           <p className="section-label">Dapur</p>
           <h1 className="page-title">Penutupan menu</h1>
-          <p className="lede">
-            Catat qty paket terjual/diproduksi. Bahan di-snapshot dan stok dapur
-            berkurang.
-          </p>
+          <p className="lede">Qty paket terjual atau diproduksi.</p>
         </div>
       </header>
 
@@ -163,9 +160,7 @@ export default function ClosingsPage() {
         ) : filtered.length === 0 ? (
           <div className="si-empty">
             <p className="si-empty-title">Belum ada penutupan</p>
-            <p className="si-empty-desc">
-              Pastikan resep menu dan stok dapur sudah siap.
-            </p>
+            <p className="si-empty-desc">Belum ada dokumen penutupan.</p>
           </div>
         ) : (
           <div className="data-table-wrap">
@@ -204,7 +199,7 @@ export default function ClosingsPage() {
       <Drawer
         open={drawerOpen}
         title="Penutupan menu"
-        description="Qty paket digabung dari resep. Pastikan stok dapur cukup."
+        description="Input qty paket per menu."
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}
@@ -309,7 +304,7 @@ export default function ClosingsPage() {
                 </li>
               ))}
             </ul>
-            <h2 className="panel-title">Bahan (snapshot)</h2>
+            <h2 className="panel-title">Rincian bahan</h2>
             <ul>
               {(detail.lines ?? []).map((l) => (
                 <li key={l.id}>

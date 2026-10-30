@@ -50,6 +50,14 @@ export type StockIn = {
   created_at: string;
 };
 
+export type StockInDetail = StockIn & {
+  item_sku: string;
+  item_name: string;
+  unit_code: string;
+  category_name?: string | null;
+  supplier_name?: string | null;
+};
+
 export type StockInResult = {
   stock_in: StockIn;
   stock: WarehouseStock;
@@ -85,6 +93,8 @@ export const warehouseApi = {
   listStocks: () => apiGet<WarehouseStock[]>("/api/v1/warehouse/stocks"),
 
   listStockIns: () => apiGet<StockIn[]>("/api/v1/warehouse/stock-ins"),
+  getStockIn: (id: string) =>
+    apiGet<StockInDetail>(`/api/v1/warehouse/stock-ins/${id}`),
   createStockIn: (body: {
     item_id: string;
     supplier_id?: string | null;

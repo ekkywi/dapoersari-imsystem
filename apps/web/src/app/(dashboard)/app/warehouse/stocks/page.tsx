@@ -3,12 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toastError } from "@/lib/toast";
-import { Item, Unit, WarehouseStock, warehouseApi } from "@/lib/warehouse";
+import {
+  Category,
+  Item,
+  Unit,
+  WarehouseStock,
+  warehouseApi,
+} from "@/lib/warehouse";
 
 export default function StocksPage() {
   const [stocks, setStocks] = useState<WarehouseStock[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -20,6 +27,10 @@ export default function StocksPage() {
     () => Object.fromEntries(units.map((u) => [u.id, u.code])),
     [units],
   );
+  const categoryMap = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.id, c.name])),
+    [categories],
+  );
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -28,13 +39,17 @@ export default function StocksPage() {
       if (!q) return true;
       if (!item) return s.item_id.toLowerCase().includes(q);
       const unit = unitMap[item.unit_id] ?? "";
+      const cat = item.category_id
+        ? (categoryMap[item.category_id] ?? "")
+        : "";
       return (
         item.sku.toLowerCase().includes(q) ||
         item.name.toLowerCase().includes(q) ||
-        unit.toLowerCase().includes(q)
+        unit.toLowerCase().includes(q) ||
+        cat.toLowerCase().includes(q)
       );
     });
-  }, [stocks, itemMap, unitMap, query]);
+  }, [stocks, itemMap, unitMap, categoryMap, query]);
 
   const lowCount = useMemo(
     () =>
@@ -48,14 +63,16 @@ export default function StocksPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [stockRows, itemRows, unitRows] = await Promise.all([
+      const [stockRows, itemRows, unitRows, categoryRows] = await Promise.all([
         warehouseApi.listStocks(),
         warehouseApi.listItems(),
         warehouseApi.listUnits(),
+        warehouseApi.listCategories(),
       ]);
       setStocks(stockRows);
       setItems(itemRows);
       setUnits(unitRows);
+      setCategories(categoryRows);
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Gagal memuat stok");
     } finally {
@@ -73,9 +90,7 @@ export default function StocksPage() {
         <div className="page-header-text">
           <p className="section-label">Transaksi gudang</p>
           <h1 className="page-title">Stok</h1>
-          <p className="lede">
-            Saldo on-hand per item. Perubahan hanya lewat transaksi.
-          </p>
+          <p className="lede">Saldo gudang per item.</p>
         </div>
       </header>
 
@@ -88,7 +103,7 @@ export default function StocksPage() {
           <input
             className="input si-search"
             type="search"
-            placeholder="Cari SKU, nama, atau satuan…"
+            placeholder="Cari SKU, nama, satuan, kategori…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Cari stok"
@@ -120,8 +135,8 @@ export default function StocksPage() {
             </p>
             <p className="si-empty-desc">
               {stocks.length === 0
-                ? "Stok muncul setelah item katalog dibuat."
-                : "Coba ubah kata kunci pencarian."}
+                ? "Belum ada item dengan saldo."
+                : "Tidak cocok dengan pencarian."}
             </p>
           </div>
         ) : (
@@ -131,6 +146,7 @@ export default function StocksPage() {
                 <tr>
                   <th>SKU</th>
                   <th>Nama</th>
+                  <th>Kategori</th>
                   <th>Satuan</th>
                   <th>Qty</th>
                   <th>Min</th>
@@ -142,6 +158,10 @@ export default function StocksPage() {
                   const item = itemMap[s.item_id];
                   const min = item?.min_stock ?? 0;
                   const unit = item ? (unitMap[item.unit_id] ?? "—") : "—";
+                  const cat =
+                    item?.category_id
+                      ? (categoryMap[item.category_id] ?? "—")
+                      : "—";
                   const low = s.qty <= min;
                   return (
                     <tr key={s.item_id}>
@@ -149,6 +169,7 @@ export default function StocksPage() {
                         <strong>{item?.sku ?? "—"}</strong>
                       </td>
                       <td>{item?.name ?? s.item_id}</td>
+                      <td>{cat}</td>
                       <td>{unit}</td>
                       <td>{s.qty}</td>
                       <td>{min}</td>

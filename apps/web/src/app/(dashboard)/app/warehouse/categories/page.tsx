@@ -69,7 +69,7 @@ export default function CategoriesPage() {
         <div className="page-header-text">
           <p className="section-label">Master gudang</p>
           <h1 className="page-title">Kategori</h1>
-          <p className="lede">Pengelompokan opsional untuk item katalog.</p>
+          <p className="lede">Kelompok item (opsional).</p>
         </div>
       </header>
 
@@ -115,8 +115,8 @@ export default function CategoriesPage() {
             </p>
             <p className="si-empty-desc">
               {rows.length === 0
-                ? "Kategori bersifat opsional pada item."
-                : "Coba ubah kata kunci pencarian."}
+                ? "Belum ada data."
+                : "Tidak cocok dengan pencarian."}
             </p>
           </div>
         ) : (
@@ -142,7 +142,7 @@ export default function CategoriesPage() {
       <Drawer
         open={drawerOpen}
         title="Tambah kategori"
-        description="Nama unik untuk pengelompokan item."
+        description="Nama kategori."
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}

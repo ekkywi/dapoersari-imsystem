@@ -128,3 +128,7 @@ func (s *Service) CreateStockIn(ctx context.Context, createdBy uuid.UUID, req Cr
 func (s *Service) ListStockIns(ctx context.Context) ([]StockIn, error) {
 	return s.repo.ListStockIns(ctx)
 }
+
+func (s *Service) GetStockIn(ctx context.Context, id uuid.UUID) (StockInDetail, error) {
+	return s.repo.FindStockInByID(ctx, id)
+}

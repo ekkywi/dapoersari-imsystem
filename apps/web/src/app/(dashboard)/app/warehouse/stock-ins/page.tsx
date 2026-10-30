@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Drawer } from "@/components/ui/Drawer";
 import { getUser } from "@/lib/auth";
 import { toastError, toastSuccess } from "@/lib/toast";
 import {
+  Category,
   Item,
   StockIn,
   Supplier,
@@ -20,10 +23,12 @@ function formatDateTime(iso: string): string {
 }
 
 export default function StockInsPage() {
+  const router = useRouter();
   const [rows, setRows] = useState<StockIn[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState("");
   const [itemId, setItemId] = useState("");
   const [supplierId, setSupplierId] = useState("");
@@ -48,6 +53,10 @@ export default function StockInsPage() {
     () => Object.fromEntries(units.map((u) => [u.id, u.code])),
     [units],
   );
+  const categoryMap = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.id, c.name])),
+    [categories],
+  );
 
   const selectedUnitCode = useMemo(() => {
     const item = itemMap[itemId];
@@ -62,27 +71,33 @@ export default function StockInsPage() {
       const item = itemMap[r.item_id];
       const supplier = r.supplier_id ? (supplierMap[r.supplier_id] ?? "") : "";
       const unit = item ? (unitMap[item.unit_id] ?? "") : "";
+      const cat =
+        item?.category_id ? (categoryMap[item.category_id] ?? "") : "";
       const label = item ? `${item.sku} ${item.name}` : r.item_id;
       return (
         label.toLowerCase().includes(q) ||
         supplier.toLowerCase().includes(q) ||
-        unit.toLowerCase().includes(q)
+        unit.toLowerCase().includes(q) ||
+        cat.toLowerCase().includes(q)
       );
     });
-  }, [rows, query, itemMap, supplierMap, unitMap]);
+  }, [rows, query, itemMap, supplierMap, unitMap, categoryMap]);
 
   const load = useCallback(async () => {
     try {
-      const [ins, itemRows, supplierRows, unitRows] = await Promise.all([
-        warehouseApi.listStockIns(),
-        warehouseApi.listItems(),
-        warehouseApi.listSuppliers(),
-        warehouseApi.listUnits(),
-      ]);
+      const [ins, itemRows, supplierRows, unitRows, categoryRows] =
+        await Promise.all([
+          warehouseApi.listStockIns(),
+          warehouseApi.listItems(),
+          warehouseApi.listSuppliers(),
+          warehouseApi.listUnits(),
+          warehouseApi.listCategories(),
+        ]);
       setRows(ins);
       setItems(itemRows);
       setSuppliers(supplierRows);
       setUnits(unitRows);
+      setCategories(categoryRows);
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Gagal memuat stok masuk");
     } finally {
@@ -128,7 +143,8 @@ export default function StockInsPage() {
       });
       setDrawerOpen(false);
       toastSuccess(`Stok masuk tercatat. Qty gudang: ${res.stock.qty}`);
-      await load();
+      router.push(`/app/warehouse/stock-ins/${res.stock_in.id}`);
+      return;
     } catch (err) {
       setFormError(
         err instanceof Error ? err.message : "Gagal mencatat stok masuk",
@@ -144,9 +160,7 @@ export default function StockInsPage() {
         <div className="page-header-text">
           <p className="section-label">Transaksi gudang</p>
           <h1 className="page-title">Stok masuk</h1>
-          <p className="lede">
-            Penerimaan barang. Menambah saldo gudang dan menulis riwayat.
-          </p>
+          <p className="lede">Penerimaan barang ke gudang.</p>
         </div>
       </header>
 
@@ -201,9 +215,9 @@ export default function StockInsPage() {
             <p className="si-empty-desc">
               {rows.length === 0
                 ? items.length === 0
-                  ? "Buat item katalog sebelum mencatat stok masuk."
-                  : "Gunakan tombol Catat stok masuk untuk transaksi pertama."
-                : "Coba ubah kata kunci pencarian."}
+                  ? "Belum ada item katalog."
+                  : "Belum ada transaksi stok masuk."
+                : "Tidak cocok dengan pencarian."}
             </p>
           </div>
         ) : (
@@ -213,17 +227,23 @@ export default function StockInsPage() {
                 <tr>
                   <th>Waktu</th>
                   <th>Item</th>
+                  <th>Kategori</th>
                   <th>Satuan</th>
                   <th>Pemasok</th>
                   <th>Qty</th>
                   <th>ED</th>
                   <th>Catatan</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((r) => {
                   const item = itemMap[r.item_id];
                   const unit = item ? (unitMap[item.unit_id] ?? "—") : "—";
+                  const cat =
+                    item?.category_id
+                      ? (categoryMap[item.category_id] ?? "—")
+                      : "—";
                   return (
                     <tr key={r.id}>
                       <td>{formatDateTime(r.created_at)}</td>
@@ -237,6 +257,7 @@ export default function StockInsPage() {
                           r.item_id
                         )}
                       </td>
+                      <td>{cat}</td>
                       <td>{unit}</td>
                       <td>
                         {r.supplier_id
@@ -250,6 +271,14 @@ export default function StockInsPage() {
                           : "—"}
                       </td>
                       <td>{r.note || "—"}</td>
+                      <td>
+                        <Link
+                          className="btn btn-ghost"
+                          href={`/app/warehouse/stock-ins/${r.id}`}
+                        >
+                          Buka
+                        </Link>
+                      </td>
                     </tr>
                   );
                 })}
@@ -262,7 +291,7 @@ export default function StockInsPage() {
       <Drawer
         open={drawerOpen}
         title="Catat stok masuk"
-        description="Transaksi ini menambah qty gudang secara langsung."
+        description="Item, qty, dan pemasok."
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}

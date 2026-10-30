@@ -180,10 +180,13 @@ func (r *Repository) Get(ctx context.Context, id uuid.UUID) (Opname, error) {
 
 func (r *Repository) listLines(ctx context.Context, opnameID uuid.UUID) ([]OpnameLine, error) {
 	const q = `
-		SELECT id, opname_id, item_id, item_sku, item_name, unit_code, system_qty, physical_qty
-		FROM opname_lines
-		WHERE opname_id = $1
-		ORDER BY item_name
+		SELECT l.id, l.opname_id, l.item_id, l.item_sku, l.item_name, l.unit_code, c.name,
+		       l.system_qty, l.physical_qty
+		FROM opname_lines l
+		LEFT JOIN items i ON i.id = l.item_id
+		LEFT JOIN categories c ON c.id = i.category_id
+		WHERE l.opname_id = $1
+		ORDER BY l.item_name
 	`
 	rows, err := r.db.QueryContext(ctx, q, opnameID)
 	if err != nil {
@@ -195,7 +198,8 @@ func (r *Repository) listLines(ctx context.Context, opnameID uuid.UUID) ([]Opnam
 	for rows.Next() {
 		var l OpnameLine
 		if err := rows.Scan(
-			&l.ID, &l.OpnameID, &l.ItemID, &l.ItemSKU, &l.ItemName, &l.UnitCode, &l.SystemQty, &l.PhysicalQty,
+			&l.ID, &l.OpnameID, &l.ItemID, &l.ItemSKU, &l.ItemName, &l.UnitCode, &l.CategoryName,
+			&l.SystemQty, &l.PhysicalQty,
 		); err != nil {
 			return nil, fmt.Errorf("scan opname line: %w", err)
 		}

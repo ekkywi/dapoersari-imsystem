@@ -100,9 +100,7 @@ export default function MenusPage() {
         <div className="page-header-text">
           <p className="section-label">Dapur</p>
           <h1 className="page-title">Resep / menu</h1>
-          <p className="lede">
-            1 menu = 1 paket. Bahan memakai satuan katalog gudang.
-          </p>
+          <p className="lede">Menu dan resep bahan.</p>
         </div>
       </header>
 
@@ -144,9 +142,7 @@ export default function MenusPage() {
         ) : filtered.length === 0 ? (
           <div className="si-empty">
             <p className="si-empty-title">Belum ada menu</p>
-            <p className="si-empty-desc">
-              Buat item gudang dulu, lalu susun resep di sini.
-            </p>
+            <p className="si-empty-desc">Belum ada menu.</p>
           </div>
         ) : (
           <div className="data-table-wrap">
@@ -191,7 +187,7 @@ export default function MenusPage() {
       <Drawer
         open={drawerOpen}
         title="Tambah menu"
-        description="Isi bahan per 1 paket porsi."
+        description="Nama menu dan status."
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}

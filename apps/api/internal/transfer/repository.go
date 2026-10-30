@@ -169,10 +169,12 @@ func (r *Repository) listPackages(ctx context.Context, requestID uuid.UUID) ([]S
 
 func (r *Repository) listLines(ctx context.Context, requestID uuid.UUID) ([]StockRequestLine, error) {
 	const q = `
-		SELECT id, request_id, item_id, item_sku, item_name, unit_code, qty
-		FROM stock_request_lines
-		WHERE request_id = $1
-		ORDER BY item_name
+		SELECT l.id, l.request_id, l.item_id, l.item_sku, l.item_name, l.unit_code, c.name, l.qty
+		FROM stock_request_lines l
+		LEFT JOIN items i ON i.id = l.item_id
+		LEFT JOIN categories c ON c.id = i.category_id
+		WHERE l.request_id = $1
+		ORDER BY l.item_name
 	`
 	rows, err := r.db.QueryContext(ctx, q, requestID)
 	if err != nil {
@@ -183,7 +185,9 @@ func (r *Repository) listLines(ctx context.Context, requestID uuid.UUID) ([]Stoc
 	var out []StockRequestLine
 	for rows.Next() {
 		var l StockRequestLine
-		if err := rows.Scan(&l.ID, &l.RequestID, &l.ItemID, &l.ItemSKU, &l.ItemName, &l.UnitCode, &l.Qty); err != nil {
+		if err := rows.Scan(
+			&l.ID, &l.RequestID, &l.ItemID, &l.ItemSKU, &l.ItemName, &l.UnitCode, &l.CategoryName, &l.Qty,
+		); err != nil {
 			return nil, fmt.Errorf("scan line: %w", err)
 		}
 		out = append(out, l)

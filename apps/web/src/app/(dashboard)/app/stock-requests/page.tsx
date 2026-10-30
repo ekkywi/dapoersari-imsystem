@@ -175,10 +175,10 @@ function StockRequestsContent() {
     focus === "warehouse" ? "Gudang" : focus === "kitchen" ? "Dapur" : "Transfer";
   const lede =
     focus === "warehouse"
-      ? "Antrian yang menunggu persetujuan atau siap ditransfer."
+      ? "Antrian persetujuan dan transfer."
       : focus === "kitchen"
-        ? "Ajukan permintaan, pantau status, dan terima transfer masuk."
-        : "Dapur mengajukan → gudang setujui & transfer → dapur terima.";
+        ? "Pengajuan dan penerimaan transfer."
+        : "Pengajuan, persetujuan, transfer, dan terima.";
 
   const showAll = statusFilter === null || statusFilter.length === 0;
 
@@ -250,8 +250,8 @@ function StockRequestsContent() {
             <p className="si-empty-title">Belum ada permintaan</p>
             <p className="si-empty-desc">
               {showAll
-                ? "Buat resep menu, lalu ajukan permintaan dari dapur."
-                : "Tidak ada dokumen dengan status terpilih. Coba “Semua”."}
+                ? "Belum ada dokumen permintaan."
+                : "Tidak ada dokumen pada filter ini."}
             </p>
           </div>
         ) : (
@@ -291,7 +291,7 @@ function StockRequestsContent() {
       <Drawer
         open={drawerOpen}
         title="Ajukan permintaan"
-        description="Pilih paket menu dan/atau item langsung. Bahan digabung otomatis."
+        description="Paket menu dan/atau item."
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}

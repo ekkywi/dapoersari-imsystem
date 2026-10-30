@@ -139,9 +139,7 @@ function OpnameDetailContent() {
         <div className="page-header-text">
           <p className="section-label">{opnameLocationLabel(doc.location)}</p>
           <h1 className="page-title">Dokumen opname</h1>
-          <p className="lede">
-            Berita acara hitung fisik vs sistem — siap dilihat dan dicetak.
-          </p>
+          <p className="lede">Dokumen hitung fisik.</p>
         </div>
         <div className="page-header-actions">
           <Link className="btn btn-ghost" href={listHref}>
@@ -196,82 +194,77 @@ function OpnameDetailContent() {
         </div>
       </div>
 
-      <article className="opname-doc" id="opname-print">
-        <header className="opname-doc-head">
-          <div>
-            <p className="opname-doc-brand">Dapoer Sari</p>
-            <h2 className="opname-doc-title">Berita acara opname stok</h2>
-            <p className="opname-doc-sub">
-              Dokumen No. {shortId(doc.id)} · Lokasi{" "}
-              {opnameLocationLabel(doc.location)}
-            </p>
-          </div>
-          <div className="opname-doc-meta">
-            <p>
-              <span className="opname-doc-meta-label">Status</span>
-              {opnameStatusLabel(doc.status)}
-            </p>
-            <p>
-              <span className="opname-doc-meta-label">Dibuat</span>
-              {formatDateTime(doc.created_at)}
-            </p>
-            {confirmedAt ? (
-              <p>
-                <span className="opname-doc-meta-label">Dikonfirmasi</span>
-                {confirmedAt}
-              </p>
-            ) : null}
-          </div>
+      <article className="si-doc" id="opname-print">
+        <header className="si-doc-kop">
+          <p className="si-doc-brand">Dapoer Sari</p>
+          <p className="si-doc-org">Sistem manajemen inventaris</p>
         </header>
 
+        <h2 className="si-doc-title">Berita acara opname stok</h2>
+
+        <dl className="si-doc-meta-grid">
+          <div className="si-doc-meta-row">
+            <dt>Nomor</dt>
+            <dd>{shortId(doc.id)}</dd>
+          </div>
+          <div className="si-doc-meta-row">
+            <dt>Lokasi</dt>
+            <dd>{opnameLocationLabel(doc.location)}</dd>
+          </div>
+          <div className="si-doc-meta-row">
+            <dt>Status</dt>
+            <dd>{opnameStatusLabel(doc.status)}</dd>
+          </div>
+          <div className="si-doc-meta-row">
+            <dt>Dibuat</dt>
+            <dd>{formatDateTime(doc.created_at)}</dd>
+          </div>
+          {confirmedAt ? (
+            <div className="si-doc-meta-row">
+              <dt>Dikonfirmasi</dt>
+              <dd>{confirmedAt}</dd>
+            </div>
+          ) : null}
+        </dl>
+
+        <p className="si-doc-lead">
+          Pada tanggal {formatDateTime(doc.created_at)} telah dilakukan
+          penghitungan fisik stok di lokasi{" "}
+          {opnameLocationLabel(doc.location).toLowerCase()} dengan hasil
+          sebagaimana tercantum dalam berita acara ini.
+        </p>
+
         {doc.note ? (
-          <p className="opname-doc-note">
+          <p className="si-doc-note">
             <strong>Catatan:</strong> {doc.note}
           </p>
-        ) : (
-          <p className="opname-doc-note muted">Tanpa catatan.</p>
-        )}
+        ) : null}
 
-        <section className="opname-doc-summary" aria-label="Ringkasan selisih">
-          <div>
-            <p className="opname-doc-stat-label">Item dihitung</p>
-            <p className="opname-doc-stat-value">{summary.total}</p>
-          </div>
-          <div>
-            <p className="opname-doc-stat-label">Cocok</p>
-            <p className="opname-doc-stat-value">{summary.matched}</p>
-          </div>
-          <div>
-            <p className="opname-doc-stat-label">Selisih (+)</p>
-            <p className="opname-doc-stat-value is-plus">
-              {summary.surplusItems}
-            </p>
-          </div>
-          <div>
-            <p className="opname-doc-stat-label">Selisih (−)</p>
-            <p className="opname-doc-stat-value is-minus">
-              {summary.deficitItems}
-            </p>
-          </div>
-        </section>
+        <p className="si-doc-summary-line">
+          <strong>Ringkasan:</strong> {summary.total} item dihitung ·{" "}
+          {summary.matched} cocok · {summary.surplusItems} selisih (+) ·{" "}
+          {summary.deficitItems} selisih (−)
+        </p>
 
-        <h3 className="opname-doc-section-title">
+        <h3 className="si-doc-section-title">
           {onlyVariance ? "Rincian selisih" : "Rincian seluruh item"}
         </h3>
 
         {visibleLines.length === 0 ? (
-          <p className="muted">
+          <p className="si-doc-note muted">
             {onlyVariance
               ? "Tidak ada selisih — semua item cocok dengan sistem."
               : "Tidak ada baris."}
           </p>
         ) : (
-          <div className="data-table-wrap opname-doc-table">
+          <div className="data-table-wrap si-doc-table">
             <table className="data-table">
               <thead>
                 <tr>
+                  <th className="si-doc-col-num">No</th>
                   <th>SKU</th>
                   <th>Nama</th>
+                  <th>Kategori</th>
                   <th>Satuan</th>
                   <th>Qty sistem</th>
                   <th>Qty fisik</th>
@@ -279,12 +272,14 @@ function OpnameDetailContent() {
                 </tr>
               </thead>
               <tbody>
-                {visibleLines.map((l) => (
+                {visibleLines.map((l, i) => (
                   <tr key={l.id}>
+                    <td className="si-doc-col-num">{i + 1}</td>
                     <td>
                       <strong>{l.item_sku}</strong>
                     </td>
                     <td>{l.item_name}</td>
+                    <td>{l.category_name || "—"}</td>
                     <td>{l.unit_code}</td>
                     <td>{l.system_qty}</td>
                     <td>{l.physical_qty}</td>
@@ -298,22 +293,25 @@ function OpnameDetailContent() {
           </div>
         )}
 
-        <footer className="opname-doc-foot">
-          <p>
-            Dokumen ini mencatat hasil hitung fisik terhadap qty sistem pada saat
-            draf dibuat
-            {doc.status === "confirmed"
-              ? ", dan telah dikonfirmasi sehingga stok sistem disesuaikan."
-              : ". Belum dikonfirmasi — stok sistem belum diubah."}
-          </p>
-          <div className="opname-doc-signs">
+        <p className="si-doc-closing">
+          {doc.status === "confirmed"
+            ? "Status dokumen: dikonfirmasi. Stok sistem sudah disesuaikan sesuai hasil hitung fisik di atas."
+            : "Status dokumen: draf. Stok sistem belum diubah hingga dokumen dikonfirmasi."}{" "}
+          Demikian berita acara ini dibuat untuk dipergunakan sebagaimana
+          mestinya.
+        </p>
+
+        <footer className="si-doc-foot">
+          <div className="si-doc-signs">
             <div>
-              <p className="opname-doc-sign-label">Petugas hitung</p>
-              <p className="opname-doc-sign-line">________________</p>
+              <p className="si-doc-sign-label">Petugas hitung</p>
+              <p className="si-doc-sign-line">________________</p>
+              <p className="si-doc-sign-caption">Nama &amp; tanda tangan</p>
             </div>
             <div>
-              <p className="opname-doc-sign-label">Mengetahui</p>
-              <p className="opname-doc-sign-line">________________</p>
+              <p className="si-doc-sign-label">Mengetahui</p>
+              <p className="si-doc-sign-line">________________</p>
+              <p className="si-doc-sign-caption">Nama &amp; tanda tangan</p>
             </div>
           </div>
         </footer>

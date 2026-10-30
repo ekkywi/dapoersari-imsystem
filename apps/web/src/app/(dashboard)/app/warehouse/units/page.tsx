@@ -72,7 +72,7 @@ export default function UnitsPage() {
         <div className="page-header-text">
           <p className="section-label">Master gudang</p>
           <h1 className="page-title">Satuan</h1>
-          <p className="lede">Master satuan baku untuk katalog item.</p>
+          <p className="lede">Satuan item katalog.</p>
         </div>
       </header>
 
@@ -118,8 +118,8 @@ export default function UnitsPage() {
             </p>
             <p className="si-empty-desc">
               {rows.length === 0
-                ? "Tambah satuan sebelum membuat item katalog."
-                : "Coba ubah kata kunci pencarian."}
+                ? "Belum ada data."
+                : "Tidak cocok dengan pencarian."}
             </p>
           </div>
         ) : (
@@ -149,7 +149,7 @@ export default function UnitsPage() {
       <Drawer
         open={drawerOpen}
         title="Tambah satuan"
-        description="Kode singkat dan nama tampilan."
+        description="Kode dan nama."
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}

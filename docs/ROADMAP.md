@@ -22,6 +22,7 @@ Context: academic deliverable with a real stakeholder demo. Foundations should b
 | Approve / transfer / receive | Item units; kitchen stock increases on confirm |
 | Menu closing | Shift/daily menu qty → ingredient usage |
 | Opname | Per location; variance adjust + history + printable document |
+| Printable BA | Stock request + warehouse stock-in (browser print; same pattern as opname) |
 | History + activity log | Filters by location; deep-link to documents |
 | Dashboard | Role-appropriate summaries from live counts |
 
@@ -33,6 +34,7 @@ Context: academic deliverable with a real stakeholder demo. Foundations should b
 | In-transit awareness | Kitchen effective stock includes transferred-not-received | Delivered (thin) |
 | Runtime config | Persist `lead_time_days`, `order_interval_days`, optional cutoff | Defaults only; admin UI later |
 | Expiry field on stock-in | Optional input; alert can be thin | Field exists; alert not yet |
+| Catalog maintenance | Update / soft-deactivate masters (items, suppliers, units, categories, menus); user admin | Create+list today; update later |
 
 ## P2 — Later
 

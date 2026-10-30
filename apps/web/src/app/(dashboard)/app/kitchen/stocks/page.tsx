@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { kitchenApi, KitchenStock } from "@/lib/kitchen";
 import { toastError } from "@/lib/toast";
-import { Item, Unit, warehouseApi } from "@/lib/warehouse";
+import { Category, Item, Unit, warehouseApi } from "@/lib/warehouse";
 
 export default function KitchenStocksPage() {
   const [stocks, setStocks] = useState<KitchenStock[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -20,6 +21,10 @@ export default function KitchenStocksPage() {
     () => Object.fromEntries(units.map((u) => [u.id, u.code])),
     [units],
   );
+  const categoryMap = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.id, c.name])),
+    [categories],
+  );
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -27,24 +32,30 @@ export default function KitchenStocksPage() {
       const item = itemMap[s.item_id];
       if (!q) return true;
       if (!item) return false;
+      const cat = item.category_id
+        ? (categoryMap[item.category_id] ?? "")
+        : "";
       return (
         item.sku.toLowerCase().includes(q) ||
-        item.name.toLowerCase().includes(q)
+        item.name.toLowerCase().includes(q) ||
+        cat.toLowerCase().includes(q)
       );
     });
-  }, [stocks, itemMap, query]);
+  }, [stocks, itemMap, categoryMap, query]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [stockRows, itemRows, unitRows] = await Promise.all([
+      const [stockRows, itemRows, unitRows, categoryRows] = await Promise.all([
         kitchenApi.listStocks(),
         warehouseApi.listItems(),
         warehouseApi.listUnits(),
+        warehouseApi.listCategories(),
       ]);
       setStocks(stockRows);
       setItems(itemRows);
       setUnits(unitRows);
+      setCategories(categoryRows);
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Gagal memuat stok dapur");
     } finally {
@@ -62,9 +73,7 @@ export default function KitchenStocksPage() {
         <div className="page-header-text">
           <p className="section-label">Dapur</p>
           <h1 className="page-title">Stok dapur</h1>
-          <p className="lede">
-            Saldo on-hand dapur. Bertambah setelah konfirmasi terima transfer.
-          </p>
+          <p className="lede">Saldo dapur per item.</p>
         </div>
       </header>
 
@@ -76,7 +85,7 @@ export default function KitchenStocksPage() {
           <input
             className="input si-search"
             type="search"
-            placeholder="Cari SKU atau nama…"
+            placeholder="Cari SKU, nama, kategori…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -96,9 +105,7 @@ export default function KitchenStocksPage() {
         ) : rows.length === 0 ? (
           <div className="si-empty">
             <p className="si-empty-title">Belum ada stok dapur</p>
-            <p className="si-empty-desc">
-              Stok muncul setelah item dibuat / transfer diterima.
-            </p>
+            <p className="si-empty-desc">Belum ada saldo dapur.</p>
           </div>
         ) : (
           <div className="data-table-wrap">
@@ -107,6 +114,7 @@ export default function KitchenStocksPage() {
                 <tr>
                   <th>SKU</th>
                   <th>Nama</th>
+                  <th>Kategori</th>
                   <th>Satuan</th>
                   <th>Qty</th>
                 </tr>
@@ -115,12 +123,17 @@ export default function KitchenStocksPage() {
                 {rows.map((s) => {
                   const item = itemMap[s.item_id];
                   const unit = item ? (unitMap[item.unit_id] ?? "—") : "—";
+                  const cat =
+                    item?.category_id
+                      ? (categoryMap[item.category_id] ?? "—")
+                      : "—";
                   return (
                     <tr key={s.item_id}>
                       <td>
                         <strong>{item?.sku ?? "—"}</strong>
                       </td>
                       <td>{item?.name ?? s.item_id}</td>
+                      <td>{cat}</td>
                       <td>{unit}</td>
                       <td>{s.qty}</td>
                     </tr>

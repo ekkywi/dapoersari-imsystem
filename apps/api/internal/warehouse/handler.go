@@ -185,6 +185,24 @@ func (h *Handler) ListStockIns(w http.ResponseWriter, r *http.Request) {
 	respond.JSON(w, http.StatusOK, out)
 }
 
+func (h *Handler) GetStockIn(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("stockInID"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "id tidak valid")
+		return
+	}
+	out, err := h.svc.GetStockIn(r.Context(), id)
+	if errors.Is(err, ErrNotFound) {
+		respond.Error(w, http.StatusNotFound, "stok masuk tidak ditemukan")
+		return
+	}
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "gagal memuat stok masuk")
+		return
+	}
+	respond.JSON(w, http.StatusOK, out)
+}
+
 func (h *Handler) CreateStockIn(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

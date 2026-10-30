@@ -86,9 +86,7 @@ export default function HistoryPage() {
         <div className="page-header-text">
           <p className="section-label">Audit</p>
           <h1 className="page-title">Riwayat</h1>
-          <p className="lede">
-            Jejak mutasi stok dan aktivitas penting (closing, opname, dll.).
-          </p>
+          <p className="lede">Mutasi stok dan log aktivitas.</p>
         </div>
       </header>
 

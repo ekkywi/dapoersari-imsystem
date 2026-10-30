@@ -111,7 +111,7 @@ Warehouse catalog and warehouse on-hand are first-class persisted concepts. Stoc
 - Visual direction: calm navy hospitality / instrument panel — operational, not marketing SaaS.
 - Unauthenticated landing may expose non-sensitive status only; stock and reports require login.
 - Light/dark theme is supported for the operator shell.
-- Opname detail includes a printable berita acara (variance document).
+- Printable berita acara documents: opname, stock request (warehouse↔kitchen), and warehouse stock-in.
 
 ## Runtime constraints
 

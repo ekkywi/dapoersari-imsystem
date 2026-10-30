@@ -15,6 +15,7 @@ export type StockRequestLine = {
   item_sku: string;
   item_name: string;
   unit_code: string;
+  category_name?: string | null;
   qty: number;
 };
 
@@ -24,6 +25,15 @@ export type StockRequest = {
   note?: string | null;
   created_by: string;
   created_at: string;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  transferred_by?: string | null;
+  transferred_at?: string | null;
+  received_by?: string | null;
+  received_at?: string | null;
+  rejected_by?: string | null;
+  rejected_at?: string | null;
+  reject_reason?: string | null;
   packages?: StockRequestPackage[];
   lines?: StockRequestLine[];
 };

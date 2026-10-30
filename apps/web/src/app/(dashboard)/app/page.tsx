@@ -43,10 +43,7 @@ export default function DashboardPage() {
         <div className="page-header-text">
           <p className="section-label">Operasional</p>
           <h1 className="page-title">Ringkasan</h1>
-          <p className="lede">
-            Angka dari stok aktual dan antrian dokumen. Alert memakai aturan
-            min-stock (bukan AI).
-          </p>
+          <p className="lede">Status stok dan antrian dokumen.</p>
         </div>
         <div className="page-header-actions">
           <button type="button" className="btn btn-ghost" onClick={() => void load()}>
@@ -130,9 +127,9 @@ export default function DashboardPage() {
           </div>
 
           <p className="muted" style={{ marginTop: "1rem", fontSize: "0.875rem" }}>
-            *Dapur memakai effective stock = on-hand + in-transit. Horizon aturan demo: lead{" "}
-            {summary.lead_time_days} hari · interval {summary.order_interval_days} hari
-            (bukan jam operasional hardcode).
+            *Dapur: stok on-hand + dalam perjalanan. Lead{" "}
+            {summary.lead_time_days} hari · interval {summary.order_interval_days}{" "}
+            hari.
           </p>
         </>
       )}

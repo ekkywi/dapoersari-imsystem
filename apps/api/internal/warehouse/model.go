@@ -61,6 +61,16 @@ type StockInResult struct {
 	Stock   WarehouseStock `json:"stock"`
 }
 
+// StockInDetail is stock-in plus catalog labels for document/print views.
+type StockInDetail struct {
+	StockIn
+	ItemSKU      string  `json:"item_sku"`
+	ItemName     string  `json:"item_name"`
+	UnitCode     string  `json:"unit_code"`
+	CategoryName *string `json:"category_name,omitempty"`
+	SupplierName *string `json:"supplier_name,omitempty"`
+}
+
 // Request bodies
 
 type CreateUnitRequest struct {

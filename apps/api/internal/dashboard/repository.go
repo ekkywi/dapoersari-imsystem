@@ -51,9 +51,10 @@ func (r *Repository) CountActiveMenus(ctx context.Context) (int, error) {
 
 func (r *Repository) ListWarehouseLowStock(ctx context.Context) ([]LowStockAlert, error) {
 	const q = `
-		SELECT i.id, i.sku, i.name, u.code, COALESCE(ws.qty, 0), i.min_stock
+		SELECT i.id, i.sku, i.name, u.code, c.name, COALESCE(ws.qty, 0), i.min_stock
 		FROM items i
 		JOIN units u ON u.id = i.unit_id
+		LEFT JOIN categories c ON c.id = i.category_id
 		LEFT JOIN warehouse_stocks ws ON ws.item_id = i.id
 		WHERE i.is_active = true
 		  AND COALESCE(ws.qty, 0) <= i.min_stock
@@ -68,7 +69,9 @@ func (r *Repository) ListWarehouseLowStock(ctx context.Context) ([]LowStockAlert
 	var out []LowStockAlert
 	for rows.Next() {
 		var a LowStockAlert
-		if err := rows.Scan(&a.ItemID, &a.SKU, &a.Name, &a.UnitCode, &a.Qty, &a.MinStock); err != nil {
+		if err := rows.Scan(
+			&a.ItemID, &a.SKU, &a.Name, &a.UnitCode, &a.CategoryName, &a.Qty, &a.MinStock,
+		); err != nil {
 			return nil, fmt.Errorf("scan warehouse alert: %w", err)
 		}
 		a.Location = "warehouse"
@@ -114,9 +117,10 @@ func (r *Repository) ListKitchenLowStock(ctx context.Context) ([]LowStockAlert, 
 	}
 
 	const q = `
-		SELECT i.id, i.sku, i.name, u.code, COALESCE(ks.qty, 0), i.min_stock
+		SELECT i.id, i.sku, i.name, u.code, c.name, COALESCE(ks.qty, 0), i.min_stock
 		FROM items i
 		JOIN units u ON u.id = i.unit_id
+		LEFT JOIN categories c ON c.id = i.category_id
 		LEFT JOIN kitchen_stocks ks ON ks.item_id = i.id
 		WHERE i.is_active = true
 		ORDER BY i.name
@@ -130,7 +134,9 @@ func (r *Repository) ListKitchenLowStock(ctx context.Context) ([]LowStockAlert, 
 	var out []LowStockAlert
 	for rows.Next() {
 		var a LowStockAlert
-		if err := rows.Scan(&a.ItemID, &a.SKU, &a.Name, &a.UnitCode, &a.Qty, &a.MinStock); err != nil {
+		if err := rows.Scan(
+			&a.ItemID, &a.SKU, &a.Name, &a.UnitCode, &a.CategoryName, &a.Qty, &a.MinStock,
+		); err != nil {
 			return nil, fmt.Errorf("scan kitchen alert: %w", err)
 		}
 		a.Location = "kitchen"

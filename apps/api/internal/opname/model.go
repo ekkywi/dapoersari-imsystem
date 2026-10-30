@@ -28,15 +28,16 @@ type Opname struct {
 }
 
 type OpnameLine struct {
-	ID          uuid.UUID `json:"id"`
-	OpnameID    uuid.UUID `json:"opname_id"`
-	ItemID      uuid.UUID `json:"item_id"`
-	ItemSKU     string    `json:"item_sku"`
-	ItemName    string    `json:"item_name"`
-	UnitCode    string    `json:"unit_code"`
-	SystemQty   float64   `json:"system_qty"`
-	PhysicalQty float64   `json:"physical_qty"`
-	Variance    float64   `json:"variance"`
+	ID           uuid.UUID `json:"id"`
+	OpnameID     uuid.UUID `json:"opname_id"`
+	ItemID       uuid.UUID `json:"item_id"`
+	ItemSKU      string    `json:"item_sku"`
+	ItemName     string    `json:"item_name"`
+	UnitCode     string    `json:"unit_code"`
+	CategoryName *string   `json:"category_name,omitempty"`
+	SystemQty    float64   `json:"system_qty"`
+	PhysicalQty  float64   `json:"physical_qty"`
+	Variance     float64   `json:"variance"`
 }
 
 type CreateOpnameRequest struct {
