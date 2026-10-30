@@ -102,7 +102,7 @@ function OpnameDetailContent() {
     try {
       const updated = await opnameApi.confirm(doc.id);
       setDoc(updated);
-      toastSuccess("Opname dikonfirmasi; stok disesuaikan");
+      toastSuccess("Opname dikonfirmasi; persediaan disesuaikan");
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Gagal konfirmasi");
     } finally {
@@ -159,7 +159,7 @@ function OpnameDetailContent() {
               disabled={busy}
               onClick={() => void confirm()}
             >
-              {busy ? "Memproses…" : "Konfirmasi & sesuaikan stok"}
+              {busy ? "Memproses…" : "Konfirmasi & sesuaikan persediaan"}
             </button>
           ) : null}
         </div>
@@ -200,7 +200,7 @@ function OpnameDetailContent() {
           <p className="si-doc-org">Sistem manajemen inventaris</p>
         </header>
 
-        <h2 className="si-doc-title">Berita acara opname stok</h2>
+        <h2 className="si-doc-title">Berita acara opname persediaan</h2>
 
         <dl className="si-doc-meta-grid">
           <div className="si-doc-meta-row">
@@ -229,7 +229,7 @@ function OpnameDetailContent() {
 
         <p className="si-doc-lead">
           Pada tanggal {formatDateTime(doc.created_at)} telah dilakukan
-          penghitungan fisik stok di lokasi{" "}
+          penghitungan fisik persediaan di lokasi{" "}
           {opnameLocationLabel(doc.location).toLowerCase()} dengan hasil
           sebagaimana tercantum dalam berita acara ini.
         </p>
@@ -295,8 +295,8 @@ function OpnameDetailContent() {
 
         <p className="si-doc-closing">
           {doc.status === "confirmed"
-            ? "Status dokumen: dikonfirmasi. Stok sistem sudah disesuaikan sesuai hasil hitung fisik di atas."
-            : "Status dokumen: draf. Stok sistem belum diubah hingga dokumen dikonfirmasi."}{" "}
+            ? "Status dokumen: dikonfirmasi. Persediaan sistem sudah disesuaikan sesuai hasil hitung fisik di atas."
+            : "Status dokumen: draf. Persediaan sistem belum diubah hingga dokumen dikonfirmasi."}{" "}
           Demikian berita acara ini dibuat untuk dipergunakan sebagaimana
           mestinya.
         </p>

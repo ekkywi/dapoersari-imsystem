@@ -29,13 +29,13 @@ export type ActivityEntry = {
 export function stockReasonLabel(reason: string): string {
   switch (reason) {
     case "stock_in":
-      return "Stok masuk";
+      return "Persediaan masuk";
     case "transfer_out":
       return "Transfer keluar";
     case "transfer_in":
       return "Transfer masuk";
     case "menu_closing":
-      return "Penutupan menu";
+      return "Akhir Shift";
     case "opname_adjust":
       return "Penyesuaian opname";
     default:
@@ -46,7 +46,7 @@ export function stockReasonLabel(reason: string): string {
 export function activityActionLabel(action: string): string {
   switch (action) {
     case "menu_closing.create":
-      return "Penutupan menu";
+      return "Akhir Shift";
     case "opname.create_draft":
       return "Opname (draf)";
     case "opname.confirm":

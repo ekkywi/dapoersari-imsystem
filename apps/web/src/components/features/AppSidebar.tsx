@@ -201,7 +201,7 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: "alerts",
         href: "/app/alerts",
-        label: "Alert stok",
+        label: "Peringatan Persediaan",
         icon: <IconTag />,
       },
     ],
@@ -219,7 +219,7 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: "suppliers",
         href: "/app/warehouse/suppliers",
-        label: "Pemasok",
+        label: "Pemasok / Vendor",
         icon: <IconTruck />,
       },
       { key: "items", href: "/app/warehouse/items", label: "Item", icon: <IconBox /> },
@@ -231,25 +231,25 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: "stocks",
         href: "/app/warehouse/stocks",
-        label: "Stok gudang",
+        label: "Persediaan Gudang",
         icon: <IconLayers />,
       },
       {
         key: "stock-ins",
         href: "/app/warehouse/stock-ins",
-        label: "Stok masuk",
+        label: "Persediaan Masuk",
         icon: <IconInbox />,
       },
       {
         key: "stock-requests-warehouse",
         href: "/app/stock-requests?focus=warehouse",
-        label: "Antrian permintaan",
+        label: "Antrian Permintaan",
         icon: <IconClipboard />,
       },
       {
         key: "opname-warehouse",
         href: "/app/opnames?focus=warehouse",
-        label: "Opname gudang",
+        label: "Opname Gudang",
         icon: <IconClipboard />,
       },
     ],
@@ -257,30 +257,41 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: "Dapur",
     items: [
-      { key: "menus", href: "/app/kitchen/menus", label: "Resep / menu", icon: <IconBook /> },
+      { key: "menus", href: "/app/kitchen/menus", label: "Resep / Menu", icon: <IconBook /> },
       {
         key: "kitchen-stocks",
         href: "/app/kitchen/stocks",
-        label: "Stok dapur",
+        label: "Persediaan Dapur",
         icon: <IconLayers />,
       },
       {
         key: "stock-requests-kitchen",
         href: "/app/stock-requests?focus=kitchen",
-        label: "Permintaan stok",
+        label: "Permintaan Persediaan",
         icon: <IconClipboard />,
       },
       {
         key: "closings",
         href: "/app/kitchen/closings",
-        label: "Penutupan menu",
+        label: "Akhir Shift",
         icon: <IconClipboard />,
       },
       {
         key: "opname-kitchen",
         href: "/app/opnames?focus=kitchen",
-        label: "Opname dapur",
+        label: "Opname Dapur",
         icon: <IconClipboard />,
+      },
+    ],
+  },
+  {
+    title: "Administrasi",
+    items: [
+      {
+        key: "users",
+        href: "/app/admin/users",
+        label: "Pengguna",
+        icon: <IconLayout />,
       },
     ],
   },

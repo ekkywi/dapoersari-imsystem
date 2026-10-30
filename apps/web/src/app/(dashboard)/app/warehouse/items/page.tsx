@@ -290,7 +290,7 @@ export default function ItemsPage() {
             </div>
             <div className="field">
               <label className="label" htmlFor="item-min">
-                Stok minimum
+                Persediaan minimum
               </label>
               <input
                 id="item-min"

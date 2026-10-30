@@ -142,7 +142,7 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListWarehouseStocks(w http.ResponseWriter, r *http.Request) {
 	out, err := h.svc.ListWarehouseStocks(r.Context())
 	if err != nil {
-		respond.Error(w, http.StatusInternalServerError, "gagal memuat stok")
+		respond.Error(w, http.StatusInternalServerError, "gagal memuat persediaan")
 		return
 	}
 	if out == nil {
@@ -167,7 +167,7 @@ func (h *Handler) GetWarehouseStock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		respond.Error(w, http.StatusInternalServerError, "gagal memuat stok")
+		respond.Error(w, http.StatusInternalServerError, "gagal memuat persediaan")
 		return
 	}
 	respond.JSON(w, http.StatusOK, s)
@@ -176,7 +176,7 @@ func (h *Handler) GetWarehouseStock(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListStockIns(w http.ResponseWriter, r *http.Request) {
 	out, err := h.svc.ListStockIns(r.Context())
 	if err != nil {
-		respond.Error(w, http.StatusInternalServerError, "gagal memuat stok masuk")
+		respond.Error(w, http.StatusInternalServerError, "gagal memuat persediaan masuk")
 		return
 	}
 	if out == nil {
@@ -193,11 +193,11 @@ func (h *Handler) GetStockIn(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := h.svc.GetStockIn(r.Context(), id)
 	if errors.Is(err, ErrNotFound) {
-		respond.Error(w, http.StatusNotFound, "stok masuk tidak ditemukan")
+		respond.Error(w, http.StatusNotFound, "persediaan masuk tidak ditemukan")
 		return
 	}
 	if err != nil {
-		respond.Error(w, http.StatusInternalServerError, "gagal memuat stok masuk")
+		respond.Error(w, http.StatusInternalServerError, "gagal memuat persediaan masuk")
 		return
 	}
 	respond.JSON(w, http.StatusOK, out)
@@ -226,7 +226,7 @@ func (h *Handler) CreateStockIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		respond.Error(w, http.StatusInternalServerError, "gagal mencatat stok masuk")
+		respond.Error(w, http.StatusInternalServerError, "gagal mencatat persediaan masuk")
 		return
 	}
 	respond.JSON(w, http.StatusCreated, res)

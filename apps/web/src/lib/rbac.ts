@@ -24,7 +24,8 @@ export type NavKey =
   | "opname-warehouse"
   | "opname-kitchen"
   | "history"
-  | "alerts";
+  | "alerts"
+  | "users";
 
 /** Menus that exist today, filtered by role. */
 export function navKeysForRole(role: string): Set<NavKey> {
@@ -161,4 +162,8 @@ export function showOpnameMutate(
   if (canMutateWarehouse(role) && !canMutateKitchen(role)) return true;
   if (canMutateKitchen(role) && !canMutateWarehouse(role)) return true;
   return false;
+}
+
+export function canManageUsers(role: string): boolean {
+  return role === Role.SuperAdmin;
 }

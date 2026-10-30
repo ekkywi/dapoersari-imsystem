@@ -74,3 +74,24 @@ export async function apiPut<T>(
   });
   return parseEnvelope<T>(res);
 }
+
+export async function apiPatch<T>(
+  path: string,
+  payload: unknown,
+  init?: RequestInit,
+): Promise<T> {
+  const token = getToken();
+  const res = await fetch(`${getApiUrl()}${path}`, {
+    method: "PATCH",
+    ...init,
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers ?? {}),
+    },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+  return parseEnvelope<T>(res);
+}

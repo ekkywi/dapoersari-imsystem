@@ -40,7 +40,7 @@ If `docs/private/` is missing on this machine, ask the user to restore it (USB/c
 
 ## Progress
 
-Trust `docs/private/STATUS.md` when available. **Tahap 0–5 done** (P0 + thin alerts/dashboard; migrations through `00005`). Do not re-scaffold auth or remake applied migrations. Next work is optional P1+ (config UI, reorder hints, deploy) unless STATUS says otherwise.
+Trust `docs/private/STATUS.md` when available. **Tahap 0–5 done** (migrations through `00005`). BA print (opname / permintaan / stok masuk) + category on stocks/alerts/BA delivered. **Next resume:** finish **Admin Pengguna** (router + FE page; see STATUS), then soft CRUD masters / config / deploy. Do not re-scaffold tahap 0–5 or remake migrations `00002`–`00005`.
 
 ## Folder layout (do not invent Nest modules)
 

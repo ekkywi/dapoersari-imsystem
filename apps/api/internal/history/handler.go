@@ -25,7 +25,7 @@ func (h *Handler) ListStock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		respond.Error(w, http.StatusInternalServerError, "gagal memuat riwayat stok")
+		respond.Error(w, http.StatusInternalServerError, "gagal memuat riwayat persediaan")
 		return
 	}
 	if out == nil {

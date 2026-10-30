@@ -66,6 +66,109 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	respond.JSON(w, http.StatusOK, user.Public())
 }
 
+func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.svc.ListUsers(r.Context())
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "gagal memuat pengguna")
+		return
+	}
+	out := make([]UserPublic, 0, len(users))
+	for _, u := range users {
+		out = append(out, u.Public())
+	}
+	respond.JSON(w, http.StatusOK, out)
+}
+
+func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	var req CreateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+	}
+
+	user, err := h.svc.CreateUser(r.Context(), req)
+	if errors.Is(err, ErrInvalidInput) {
+		respond.Error(w, http.StatusBadRequest, "input tidak valid")
+		return
+	}
+	if errors.Is(err, ErrEmailTaken) {
+		respond.Error(w, http.StatusConflict, "email sudah terpakai")
+		return
+	}
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "gagal membuat pengguna")
+		return
+	}
+	respond.JSON(w, http.StatusCreated, user.Public())
+}
+
+func (h *Handler) PatchUser(w http.ResponseWriter, r *http.Request) {
+	actorID, ok := UserIDFromContext(r.Context())
+	if !ok {
+		respond.Error(w, http.StatusUnauthorized, "tidak diizinkan")
+		return
+	}
+
+	targetID, err := uuid.Parse(r.PathValue("userID"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "id tidak valid")
+		return
+	}
+
+	var req PatchUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
+	}
+
+	user, err := h.svc.PatchUser(r.Context(), actorID, targetID, req)
+	if errors.Is(err, ErrNotFound) {
+		respond.Error(w, http.StatusNotFound, "pengguna tidak ditemukan")
+		return
+	}
+	if errors.Is(err, ErrInvalidInput) {
+		respond.Error(w, http.StatusBadRequest, "data tidak valid")
+		return
+	}
+	if errors.Is(err, ErrForbiddenAction) {
+		respond.Error(w, http.StatusForbidden, "aksi tidak diizinkan")
+		return
+	}
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "gagal mengubah pengguna")
+		return
+	}
+	respond.JSON(w, http.StatusOK, user.Public())
+}
+
+func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	targetID, err := uuid.Parse(r.PathValue("userID"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "id tidak valid")
+		return
+	}
+
+	var req ResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
+	}
+	
+	err = h.svc.ResetPassword(r.Context(), targetID, req.Password)
+	if errors.Is(err, ErrNotFound) {
+		respond.Error(w, http.StatusNotFound, "pengguna tidak ditemukan")
+		return
+	}
+	if errors.Is(err, ErrInvalidInput) {
+		respond.Error(w, http.StatusBadRequest, "data tidak valid")
+		return
+	}
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "gagal mengatur ulang kata sandi")
+		return
+	}
+	respond.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 type ctxKey string
 
 const (

@@ -55,9 +55,9 @@ function AlertsContent() {
       <header className="si-page-header">
         <div className="page-header-text">
           <p className="section-label">Operasional</p>
-          <h1 className="page-title">Alert stok</h1>
+          <h1 className="page-title">Peringatan Persediaan</h1>
           <p className="lede">
-            Item di bawah atau sama dengan stok minimum.
+            Item di bawah atau sama dengan persediaan minimum.
           </p>
         </div>
         <div className="page-header-actions">
@@ -95,7 +95,7 @@ function AlertsContent() {
       <div className="si-toolbar">
         <div className="si-toolbar-meta">
           <p className="si-count">
-            <strong>{filtered.length}</strong> alert
+            <strong>{filtered.length}</strong> Peringatan
           </p>
           <input
             className="input si-search"
@@ -119,8 +119,8 @@ function AlertsContent() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="si-empty">
-            <p className="si-empty-title">Tidak ada alert</p>
-            <p className="si-empty-desc">Tidak ada item di bawah stok minimum.</p>
+            <p className="si-empty-title">Tidak ada peringatan</p>
+            <p className="si-empty-desc">Tidak ada item di bawah persediaan minimum.</p>
           </div>
         ) : (
           <div className="data-table-wrap">

@@ -112,7 +112,7 @@ func (h *Handler) Transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req, err := h.svc.Transfer(r.Context(), id, userID)
-	if mapTransferErr(w, err, "gagal mentransfer stok") {
+	if mapTransferErr(w, err, "gagal mentransfer persediaan") {
 		return
 	}
 	respond.JSON(w, http.StatusOK, req)
@@ -130,7 +130,7 @@ func (h *Handler) Receive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req, err := h.svc.Receive(r.Context(), id, userID)
-	if mapTransferErr(w, err, "gagal menerima stok") {
+	if mapTransferErr(w, err, "gagal menerima persediaan") {
 		return
 	}
 	respond.JSON(w, http.StatusOK, req)
@@ -153,7 +153,7 @@ func mapTransferErr(w http.ResponseWriter, err error, fallback string) bool {
 		return true
 	}
 	if errors.Is(err, ErrInsufficientStock) {
-		respond.Error(w, http.StatusConflict, "stok gudang tidak mencukupi")
+		respond.Error(w, http.StatusConflict, "persediaan gudang tidak mencukupi")
 		return true
 	}
 	respond.Error(w, http.StatusInternalServerError, fallback)

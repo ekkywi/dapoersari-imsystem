@@ -49,7 +49,7 @@ export default function StockInDetailPage() {
   if (!doc) {
     return (
       <div className="si-page">
-        <p className="error">Stok masuk tidak ditemukan</p>
+        <p className="error">Persediaan masuk tidak ditemukan</p>
         <Link className="btn btn-ghost" href="/app/warehouse/stock-ins">
           Kembali
         </Link>
@@ -66,7 +66,7 @@ export default function StockInDetailPage() {
       <header className="si-page-header no-print">
         <div className="page-header-text">
           <p className="section-label">Transaksi gudang</p>
-          <h1 className="page-title">Dokumen stok masuk</h1>
+          <h1 className="page-title">Dokumen persediaan masuk</h1>
           <p className="lede">No. {shortId(doc.id)}</p>
         </div>
         <div className="page-header-actions">
@@ -89,7 +89,7 @@ export default function StockInDetailPage() {
           <p className="si-doc-org">Sistem manajemen inventaris</p>
         </header>
 
-        <h2 className="si-doc-title">Berita acara stok masuk</h2>
+        <h2 className="si-doc-title">Berita acara persediaan masuk</h2>
 
         <dl className="si-doc-meta-grid">
           <div className="si-doc-meta-row">

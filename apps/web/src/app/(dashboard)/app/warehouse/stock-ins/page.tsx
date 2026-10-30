@@ -99,7 +99,7 @@ export default function StockInsPage() {
       setUnits(unitRows);
       setCategories(categoryRows);
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal memuat stok masuk");
+      toastError(e instanceof Error ? e.message : "Gagal memuat persediaan masuk");
     } finally {
       setLoading(false);
     }
@@ -142,12 +142,12 @@ export default function StockInsPage() {
           : null,
       });
       setDrawerOpen(false);
-      toastSuccess(`Stok masuk tercatat. Qty gudang: ${res.stock.qty}`);
+      toastSuccess(`Persediaan masuk tercatat. Qty gudang: ${res.stock.qty}`);
       router.push(`/app/warehouse/stock-ins/${res.stock_in.id}`);
       return;
     } catch (err) {
       setFormError(
-        err instanceof Error ? err.message : "Gagal mencatat stok masuk",
+        err instanceof Error ? err.message : "Gagal mencatat persediaan masuk",
       );
     } finally {
       setSaving(false);
@@ -159,7 +159,7 @@ export default function StockInsPage() {
       <header className="si-page-header">
         <div className="page-header-text">
           <p className="section-label">Transaksi gudang</p>
-          <h1 className="page-title">Stok masuk</h1>
+          <h1 className="page-title">Persediaan masuk</h1>
           <p className="lede">Penerimaan barang ke gudang.</p>
         </div>
       </header>
@@ -175,7 +175,7 @@ export default function StockInsPage() {
             placeholder="Cari item atau pemasok…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Cari stok masuk"
+            aria-label="Cari persediaan masuk"
           />
         </div>
         <div className="si-toolbar-actions">
@@ -196,7 +196,7 @@ export default function StockInsPage() {
                 items.length === 0 ? "Buat item terlebih dahulu" : undefined
               }
             >
-              Catat stok masuk
+              Catat persediaan masuk
             </button>
           ) : null}
         </div>
@@ -216,7 +216,7 @@ export default function StockInsPage() {
               {rows.length === 0
                 ? items.length === 0
                   ? "Belum ada item katalog."
-                  : "Belum ada transaksi stok masuk."
+                  : "Belum ada transaksi persediaan masuk."
                 : "Tidak cocok dengan pencarian."}
             </p>
           </div>
@@ -290,7 +290,7 @@ export default function StockInsPage() {
 
       <Drawer
         open={drawerOpen}
-        title="Catat stok masuk"
+        title="Catat persediaan masuk"
         description="Item, qty, dan pemasok."
         onClose={() => setDrawerOpen(false)}
       >

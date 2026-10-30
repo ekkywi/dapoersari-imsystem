@@ -61,7 +61,7 @@ export default async function HomePage() {
             <article className="stat-card">
               <p className="stat-label">Akses data</p>
               <p className="stat-value">Terbatas</p>
-              <p className="stat-hint">Stok &amp; laporan setelah masuk</p>
+              <p className="stat-hint">Persediaan &amp; laporan setelah masuk</p>
             </article>
           </div>
         </section>

@@ -57,7 +57,7 @@ export default function KitchenStocksPage() {
       setUnits(unitRows);
       setCategories(categoryRows);
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal memuat stok dapur");
+      toastError(e instanceof Error ? e.message : "Gagal memuat persediaan dapur");
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,7 @@ export default function KitchenStocksPage() {
       <header className="si-page-header">
         <div className="page-header-text">
           <p className="section-label">Dapur</p>
-          <h1 className="page-title">Stok dapur</h1>
+          <h1 className="page-title">Persediaan dapur</h1>
           <p className="lede">Saldo dapur per item.</p>
         </div>
       </header>
@@ -104,7 +104,7 @@ export default function KitchenStocksPage() {
           </div>
         ) : rows.length === 0 ? (
           <div className="si-empty">
-            <p className="si-empty-title">Belum ada stok dapur</p>
+            <p className="si-empty-title">Belum ada persediaan dapur</p>
             <p className="si-empty-desc">Belum ada saldo dapur.</p>
           </div>
         ) : (

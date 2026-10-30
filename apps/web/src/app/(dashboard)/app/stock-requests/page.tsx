@@ -145,8 +145,8 @@ function StockRequestsContent() {
         extra_items,
       });
       setDrawerOpen(false);
-      toastSuccess("Permintaan stok diajukan");
-      await load();
+      toastSuccess("Permintaan persediaan diajukan");
+      await load(); 
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Gagal mengajukan");
     } finally {
@@ -169,8 +169,8 @@ function StockRequestsContent() {
     focus === "warehouse"
       ? "Antrian permintaan"
       : focus === "kitchen"
-        ? "Permintaan stok"
-        : "Permintaan stok";
+        ? "Permintaan persediaan"
+        : "Permintaan persediaan";
   const sectionLabel =
     focus === "warehouse" ? "Gudang" : focus === "kitchen" ? "Dapur" : "Transfer";
   const lede =

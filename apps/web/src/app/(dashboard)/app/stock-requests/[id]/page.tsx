@@ -35,7 +35,7 @@ function statusFootnote(status: string): string {
     case "transferred":
       return "Status: ditransfer. Menunggu konfirmasi terima dapur.";
     case "received":
-      return "Status: diterima. Stok dapur sudah bertambah.";
+      return "Status: diterima. Persediaan dapur sudah bertambah.";
     case "rejected":
       return "Status: ditolak.";
     default:
@@ -185,7 +185,7 @@ function StockRequestDetailContent() {
               onClick={() =>
                 void run(
                   () => transferApi.transfer(req.id),
-                  "Stok gudang dikurangi (transfer)",
+                  "Persediaan gudang dikurangi (transfer)",
                 )
               }
             >
@@ -200,7 +200,7 @@ function StockRequestDetailContent() {
               onClick={() =>
                 void run(
                   () => transferApi.receive(req.id),
-                  "Stok dapur bertambah (diterima)",
+                  "Persediaan dapur bertambah (diterima)",
                 )
               }
             >
@@ -216,7 +216,7 @@ function StockRequestDetailContent() {
           <p className="si-doc-org">Sistem manajemen inventaris</p>
         </header>
 
-        <h2 className="si-doc-title">Berita acara permintaan stok</h2>
+        <h2 className="si-doc-title">Berita acara permintaan persediaan</h2>
 
         <dl className="si-doc-meta-grid">
           <div className="si-doc-meta-row">
@@ -259,7 +259,7 @@ function StockRequestDetailContent() {
 
         <p className="si-doc-lead">
           Pada tanggal {formatDateTime(req.created_at)} dapur mengajukan
-          permintaan stok kepada gudang dengan rincian paket dan item
+          permintaan persediaan kepada gudang dengan rincian paket dan item
           sebagaimana tercantum dalam berita acara ini.
         </p>
 

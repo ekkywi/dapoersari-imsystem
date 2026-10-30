@@ -105,7 +105,7 @@ func (h *Handler) ReplaceRecipe(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListKitchenStocks(w http.ResponseWriter, r *http.Request) {
 	out, err := h.svc.ListKitchenStocks(r.Context())
 	if err != nil {
-		respond.Error(w, http.StatusInternalServerError, "gagal memuat stok dapur")
+		respond.Error(w, http.StatusInternalServerError, "gagal memuat persediaan dapur")
 		return
 	}
 	if out == nil {
@@ -170,7 +170,7 @@ func mapKitchenErr(w http.ResponseWriter, err error, fallback string) bool {
 		return true
 	}
 	if errors.Is(err, ErrInsufficientStock) {
-		respond.Error(w, http.StatusConflict, "stok dapur tidak mencukupi")
+		respond.Error(w, http.StatusConflict, "persediaan dapur tidak mencukupi")
 		return true
 	}
 	respond.Error(w, http.StatusInternalServerError, fallback)

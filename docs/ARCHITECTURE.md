@@ -68,7 +68,7 @@ src/components/features/     # shell: AuthGate, AppSidebar, …
 src/lib/                     # API clients, session, RBAC helpers
 ```
 
-Primary operator routes live under `/app` (overview, warehouse, kitchen, stock-requests, opnames, alerts, history). Navigation is role-filtered; some shared screens use `?focus=warehouse|kitchen` so Super Admin sees the correct actions per entry door.
+Primary operator routes live under `/app` (overview, warehouse, kitchen, stock-requests, opnames, alerts, history). Super Admin also gets **Administrasi** (e.g. `/app/admin/users` when enabled). Navigation is role-filtered; some shared screens use `?focus=warehouse|kitchen` so Super Admin sees the correct actions per entry door.
 
 ## Cross-origin configuration
 
@@ -95,7 +95,7 @@ API JSON uses a consistent envelope: success payload under `data`, failures unde
 
 | Domain | Responsibility |
 |--------|----------------|
-| Auth / users | Identity, roles, JWT session |
+| Auth / users | Identity, roles, JWT session; Super Admin user management under `/api/v1/admin/users` (soft deactivate only) |
 | Warehouse | Units, categories, suppliers, items, warehouse on-hand, stock-in |
 | Kitchen | Recipes/menus, kitchen on-hand, menu closing (usage) |
 | Transfer | Stock requests: create → approve/reject → transfer → receive |
@@ -111,7 +111,7 @@ Warehouse catalog and warehouse on-hand are first-class persisted concepts. Stoc
 - Visual direction: calm navy hospitality / instrument panel — operational, not marketing SaaS.
 - Unauthenticated landing may expose non-sensitive status only; stock and reports require login.
 - Light/dark theme is supported for the operator shell.
-- Printable berita acara documents: opname, stock request (warehouse↔kitchen), and warehouse stock-in.
+- Printable berita acara documents: opname, stock request (warehouse↔kitchen), and warehouse stock-in (`.si-doc` + `@media print`; no PDF library).
 
 ## Runtime constraints
 

@@ -1304,7 +1304,7 @@ input {
   }
 }
 
-/* Formal printable documents (opname, permintaan, stok masuk, …) */
+/* Formal printable documents (opname, permintaan, persediaan masuk, …) */
 .si-doc,
 .opname-doc {
   border: 1px solid var(--border);

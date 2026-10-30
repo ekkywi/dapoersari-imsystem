@@ -108,7 +108,7 @@ export default function ClosingsPage() {
         packages: pkgs,
       });
       setDrawerOpen(false);
-      toastSuccess("Penutupan menu tersimpan; stok dapur dikurangi");
+      toastSuccess("Akhir shift tersimpan; persediaan dapur dikurangi");
       await load();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Gagal menyimpan");
@@ -122,7 +122,7 @@ export default function ClosingsPage() {
       <header className="si-page-header">
         <div className="page-header-text">
           <p className="section-label">Dapur</p>
-          <h1 className="page-title">Penutupan menu</h1>
+          <h1 className="page-title">Akhir shift</h1>
           <p className="lede">Qty paket terjual atau diproduksi.</p>
         </div>
       </header>
@@ -198,8 +198,8 @@ export default function ClosingsPage() {
 
       <Drawer
         open={drawerOpen}
-        title="Penutupan menu"
-        description="Input qty paket per menu."
+        title="Akhir shift"
+        description="Input qty paket terjual atau diproduksi."
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}
@@ -277,7 +277,7 @@ export default function ClosingsPage() {
               Batal
             </button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Menyimpan…" : "Simpan & kurangi stok"}
+              {saving ? "Menyimpan…" : "Simpan & kurangi persediaan"}
             </button>
           </div>
         </form>

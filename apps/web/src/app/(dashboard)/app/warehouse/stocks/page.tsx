@@ -74,7 +74,7 @@ export default function StocksPage() {
       setUnits(unitRows);
       setCategories(categoryRows);
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal memuat stok");
+      toastError(e instanceof Error ? e.message : "Gagal memuat persediaan");
     } finally {
       setLoading(false);
     }
@@ -89,7 +89,7 @@ export default function StocksPage() {
       <header className="si-page-header">
         <div className="page-header-text">
           <p className="section-label">Transaksi gudang</p>
-          <h1 className="page-title">Stok</h1>
+          <h1 className="page-title">Persediaan</h1>
           <p className="lede">Saldo gudang per item.</p>
         </div>
       </header>
@@ -106,7 +106,7 @@ export default function StocksPage() {
             placeholder="Cari SKU, nama, satuan, kategori…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Cari stok"
+            aria-label="Cari persediaan"
           />
         </div>
         <div className="si-toolbar-actions">
@@ -118,7 +118,7 @@ export default function StocksPage() {
             Muat ulang
           </button>
           <Link className="btn btn-primary" href="/app/warehouse/stock-ins">
-            Stok masuk
+            Persediaan masuk
           </Link>
         </div>
       </div>
@@ -131,7 +131,7 @@ export default function StocksPage() {
         ) : rows.length === 0 ? (
           <div className="si-empty">
             <p className="si-empty-title">
-              {stocks.length === 0 ? "Belum ada stok" : "Tidak ada hasil"}
+              {stocks.length === 0 ? "Belum ada persediaan" : "Tidak ada hasil"}
             </p>
             <p className="si-empty-desc">
               {stocks.length === 0

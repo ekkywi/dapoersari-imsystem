@@ -43,7 +43,7 @@ export default function DashboardPage() {
         <div className="page-header-text">
           <p className="section-label">Operasional</p>
           <h1 className="page-title">Ringkasan</h1>
-          <p className="lede">Status stok dan antrian dokumen.</p>
+          <p className="lede">Status persediaan dan antrian dokumen.</p>
         </div>
         <div className="page-header-actions">
           <button type="button" className="btn btn-ghost" onClick={() => void load()}>
@@ -63,7 +63,7 @@ export default function DashboardPage() {
         <>
           <div className="badge-row badge-row-spaced" style={{ marginBottom: "1rem" }}>
             {totalLow === 0 ? (
-              <span className="badge badge-success">Stok dalam ambang</span>
+              <span className="badge badge-success">Persediaan dalam ambang</span>
             ) : (
               <span className="badge badge-warn">{totalLow} item perlu perhatian</span>
             )}
@@ -127,7 +127,7 @@ export default function DashboardPage() {
           </div>
 
           <p className="muted" style={{ marginTop: "1rem", fontSize: "0.875rem" }}>
-            *Dapur: stok on-hand + dalam perjalanan. Lead{" "}
+            *Dapur: persediaan tersedia + dalam perjalanan. Lead{" "}
             {summary.lead_time_days} hari · interval {summary.order_interval_days}{" "}
             hari.
           </p>

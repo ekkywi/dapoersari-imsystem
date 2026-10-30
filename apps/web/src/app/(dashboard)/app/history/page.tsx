@@ -86,7 +86,7 @@ export default function HistoryPage() {
         <div className="page-header-text">
           <p className="section-label">Audit</p>
           <h1 className="page-title">Riwayat</h1>
-          <p className="lede">Mutasi stok dan log aktivitas.</p>
+          <p className="lede">Mutasi persediaan dan log aktivitas.</p>
         </div>
       </header>
 
@@ -96,7 +96,7 @@ export default function HistoryPage() {
           className={tab === "stock" ? "si-filter-chip is-active" : "si-filter-chip"}
           onClick={() => setTab("stock")}
         >
-          Mutasi stok
+          Mutasi persediaan
         </button>
         <button
           type="button"

@@ -167,7 +167,7 @@ function OpnamesContent() {
         <div className="page-header-text">
           <p className="section-label">{sectionLabel}</p>
           <h1 className="page-title">{title}</h1>
-          <p className="lede">Hitung fisik versus stok sistem.</p>
+          <p className="lede">Hitung fisik versus persediaan sistem.</p>
         </div>
       </header>
 
