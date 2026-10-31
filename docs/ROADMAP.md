@@ -34,8 +34,8 @@ Context: academic deliverable with a real stakeholder demo. Foundations should b
 | In-transit awareness | Kitchen effective stock includes transferred-not-received | Delivered (thin) |
 | Runtime config | Persist `lead_time_days`, `order_interval_days`, optional cutoff | Defaults only; admin UI later |
 | Expiry field on stock-in | Optional input; alert can be thin | Field exists; alert not yet |
-| Catalog maintenance | Update / soft-deactivate masters (items, suppliers, units, categories, menus) | Create+list today; update later |
-| User administration | Super Admin: list/create/edit/soft-deactivate/reset password (no hard delete) | In progress (API core; routes + UI completing) |
+| Catalog maintenance | Update / soft-deactivate masters (items, suppliers, units, categories, menus) | Delivered (soft; no hard delete) |
+| User administration | Super Admin: list/create/edit/soft-deactivate/reset password (no hard delete) | Delivered |
 
 ## P2 — Later
 

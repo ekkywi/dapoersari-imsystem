@@ -75,6 +75,33 @@ func (h *Handler) CreateMenu(w http.ResponseWriter, r *http.Request) {
 	respond.JSON(w, http.StatusCreated, m)
 }
 
+func (h *Handler) PatchMenu(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("menuID"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "data tidak valid")
+		return
+	}
+	var req PatchMenuRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
+	}
+	m, err := h.svc.PatchMenu(r.Context(), id, req)
+	if errors.Is(err, ErrInvalidInput) {
+		respond.Error(w, http.StatusBadRequest, "data tidak valid")
+		return
+	}
+	if errors.Is(err, ErrNotFound) {
+		respond.Error(w, http.StatusNotFound, "data tidak ditemukan")
+		return
+	}
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "gagal mengubah menu")
+		return
+	}
+	respond.JSON(w, http.StatusOK, m)
+}
+
 func (h *Handler) ReplaceRecipe(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("menuID"))
 	if err != nil {

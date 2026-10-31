@@ -15,7 +15,8 @@ export default function UnitsPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [canWrite, setCanWrite] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<"create" | "edit" | null>(null);
+  const [editing, setEditing] = useState<Unit | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -42,11 +43,26 @@ export default function UnitsPage() {
     void load();
   }, [load]);
 
+  function closeDrawer() {
+    setDrawerMode(null);
+    setEditing(null);
+    setFormError(null);
+  }
+
   function openCreate() {
+    setEditing(null);
     setCode("");
     setName("");
     setFormError(null);
-    setDrawerOpen(true);
+    setDrawerMode("create");
+  }
+
+  function openEdit(u: Unit) {
+    setEditing(u);
+    setCode(u.code);
+    setName(u.name);
+    setFormError(null);
+    setDrawerMode("edit");
   }
 
   async function onSubmit(e: FormEvent) {
@@ -55,12 +71,17 @@ export default function UnitsPage() {
     setSaving(true);
     setFormError(null);
     try {
-      await warehouseApi.createUnit({ code, name });
-      setDrawerOpen(false);
-      toastSuccess("Satuan berhasil ditambahkan");
+      if (drawerMode === "create") {
+        await warehouseApi.createUnit({ code, name });
+        toastSuccess("Satuan berhasil ditambahkan");
+      } else if (drawerMode === "edit" && editing) {
+        await warehouseApi.patchUnit(editing.id, { code, name });
+        toastSuccess("Satuan diperbarui");
+      }
+      closeDrawer();
       await load();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Gagal menambah satuan");
+      setFormError(err instanceof Error ? err.message : "Gagal menyimpan");
     } finally {
       setSaving(false);
     }
@@ -99,7 +120,11 @@ export default function UnitsPage() {
             Muat ulang
           </button>
           {canWrite ? (
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={openCreate}
+            >
               Tambah satuan
             </button>
           ) : null}
@@ -129,6 +154,7 @@ export default function UnitsPage() {
                 <tr>
                   <th>Kode</th>
                   <th>Nama</th>
+                  {canWrite ? <th>Aksi</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -138,6 +164,17 @@ export default function UnitsPage() {
                       <strong>{u.code}</strong>
                     </td>
                     <td>{u.name}</td>
+                    {canWrite ? (
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => openEdit(u)}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -147,13 +184,13 @@ export default function UnitsPage() {
       </section>
 
       <Drawer
-        open={drawerOpen}
-        title="Tambah satuan"
-        description="Kode dan nama."
-        onClose={() => setDrawerOpen(false)}
+        open={drawerMode !== null}
+        title={drawerMode === "edit" ? "Edit satuan" : "Tambah satuan"}
+        description="Kode dan nama. Ubah kode hati-hati jika sudah dipakai item."
+        onClose={closeDrawer}
       >
         {formError ? <p className="error">{formError}</p> : null}
-        <form className="form" onSubmit={onSubmit}>
+        <form className="form" onSubmit={(e) => void onSubmit(e)}>
           <div className="field">
             <label className="label" htmlFor="unit-code">
               Kode
@@ -185,7 +222,7 @@ export default function UnitsPage() {
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => setDrawerOpen(false)}
+              onClick={closeDrawer}
             >
               Batal
             </button>

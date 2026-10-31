@@ -124,6 +124,25 @@ func (r *Repository) CreateMenu(ctx context.Context, name string, lines []Recipe
 	return r.GetMenu(ctx, m.ID)
 }
 
+func (r *Repository) UpdateMenu(ctx context.Context, id uuid.UUID, name string, isActive bool) (Menu, error) {
+	const q = `
+		UPDATE menus
+		SET name = $2, is_active = $3
+		WHERE id = $1
+		RETURNING id, name, is_active, created_at
+	`
+	var m Menu
+	err := r.db.QueryRowContext(ctx, q, id, strings.TrimSpace(name), isActive).
+		Scan(&m.ID, &m.Name, &m.IsActive, &m.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Menu{}, ErrNotFound
+	}
+	if err != nil {
+		return Menu{}, fmt.Errorf("update menu: %w", err)
+	}
+	return r.GetMenu(ctx, m.ID)
+}
+
 func (r *Repository) ReplaceRecipe(ctx context.Context, menuID uuid.UUID, lines []RecipeLineInput) (Menu, error) {
 	if _, err := r.GetMenu(ctx, menuID); err != nil {
 		return Menu{}, err

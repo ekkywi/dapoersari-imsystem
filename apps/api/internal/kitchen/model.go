@@ -44,6 +44,11 @@ type ReplaceRecipeRequest struct {
 	Lines []RecipeLineInput `json:"lines"`
 }
 
+type PatchMenuRequest struct {
+	Name     *string `json:"name"`
+	IsActive *bool   `json:"is_active"`
+}
+
 type MenuClosing struct {
 	ID          uuid.UUID             `json:"id"`
 	ClosingDate string                `json:"closing_date"`

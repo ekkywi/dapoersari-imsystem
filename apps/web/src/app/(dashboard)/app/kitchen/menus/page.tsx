@@ -9,6 +9,7 @@ import { toastError, toastSuccess } from "@/lib/toast";
 import { Item, warehouseApi } from "@/lib/warehouse";
 
 type DraftLine = { item_id: string; qty_per_paket: string };
+type DrawerMode = "create" | "edit" | null;
 
 export default function MenusPage() {
   const [rows, setRows] = useState<Menu[]>([]);
@@ -22,8 +23,14 @@ export default function MenusPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [canWrite, setCanWrite] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
+  const [editing, setEditing] = useState<Menu | null>(null);
   const [detail, setDetail] = useState<Menu | null>(null);
+
+  const activeItems = useMemo(
+    () => items.filter((it) => it.is_active),
+    [items],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -52,11 +59,39 @@ export default function MenusPage() {
     void load();
   }, [load]);
 
-  function openCreate() {
-    setName("");
-    setLines([{ item_id: items[0]?.id ?? "", qty_per_paket: "1" }]);
+  function closeDrawer() {
+    setDrawerMode(null);
+    setEditing(null);
     setFormError(null);
-    setDrawerOpen(true);
+  }
+
+  function openCreate() {
+    setEditing(null);
+    setName("");
+    setLines([{ item_id: activeItems[0]?.id ?? "", qty_per_paket: "1" }]);
+    setFormError(null);
+    setDrawerMode("create");
+  }
+
+  async function openEdit(id: string) {
+    try {
+      const m = await kitchenApi.getMenu(id);
+      setEditing(m);
+      setName(m.name);
+      setLines(
+        (m.lines ?? []).map((l) => ({
+          item_id: l.item_id,
+          qty_per_paket: String(l.qty_per_paket),
+        })),
+      );
+      if (!(m.lines && m.lines.length > 0)) {
+        setLines([{ item_id: activeItems[0]?.id ?? "", qty_per_paket: "1" }]);
+      }
+      setFormError(null);
+      setDrawerMode("edit");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Gagal memuat menu");
+    }
   }
 
   async function openDetail(id: string) {
@@ -67,15 +102,19 @@ export default function MenusPage() {
     }
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!canWrite) return;
-    const parsed = lines
+  function parseLines() {
+    return lines
       .map((l) => ({
         item_id: l.item_id,
         qty_per_paket: Number(l.qty_per_paket),
       }))
       .filter((l) => l.item_id && l.qty_per_paket > 0);
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!canWrite) return;
+    const parsed = parseLines();
     if (!name.trim() || parsed.length === 0) {
       setFormError("Nama menu dan minimal satu bahan wajib diisi");
       return;
@@ -83,9 +122,15 @@ export default function MenusPage() {
     setSaving(true);
     setFormError(null);
     try {
-      await kitchenApi.createMenu({ name, lines: parsed });
-      setDrawerOpen(false);
-      toastSuccess("Menu/resep berhasil ditambahkan");
+      if (drawerMode === "create") {
+        await kitchenApi.createMenu({ name, lines: parsed });
+        toastSuccess("Menu/resep berhasil ditambahkan");
+      } else if (drawerMode === "edit" && editing) {
+        await kitchenApi.patchMenu(editing.id, { name });
+        await kitchenApi.replaceRecipe(editing.id, { lines: parsed });
+        toastSuccess("Menu/resep diperbarui");
+      }
+      closeDrawer();
       await load();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Gagal menyimpan");
@@ -93,6 +138,29 @@ export default function MenusPage() {
       setSaving(false);
     }
   }
+
+  async function toggleActive(m: Menu) {
+    if (!canWrite) return;
+    const next = !m.is_active;
+    const ok = window.confirm(
+      next
+        ? `Aktifkan ${m.name}?`
+        : `Nonaktifkan ${m.name}? Menu tidak dipakai di penutupan baru.`,
+    );
+    if (!ok) return;
+    try {
+      await kitchenApi.patchMenu(m.id, { is_active: next });
+      toastSuccess(next ? "Menu diaktifkan" : "Menu dinonaktifkan");
+      await load();
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Gagal mengubah status");
+    }
+  }
+
+  const itemOptions = useMemo(() => {
+    const idsInForm = new Set(lines.map((l) => l.item_id).filter(Boolean));
+    return items.filter((it) => it.is_active || idsInForm.has(it.id));
+  }, [items, lines]);
 
   return (
     <div className="si-page">
@@ -118,7 +186,11 @@ export default function MenusPage() {
           />
         </div>
         <div className="si-toolbar-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => void load()}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => void load()}
+          >
             Muat ulang
           </button>
           {canWrite ? (
@@ -126,7 +198,7 @@ export default function MenusPage() {
               type="button"
               className="btn btn-primary"
               onClick={openCreate}
-              disabled={items.length === 0}
+              disabled={activeItems.length === 0}
             >
               Tambah menu
             </button>
@@ -151,7 +223,7 @@ export default function MenusPage() {
                 <tr>
                   <th>Nama</th>
                   <th>Status</th>
-                  <th />
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -173,8 +245,27 @@ export default function MenusPage() {
                         className="btn btn-ghost"
                         onClick={() => void openDetail(m.id)}
                       >
-                        Detail resep
+                        Detail
                       </button>
+                      {canWrite ? (
+                        <>
+                          {" "}
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => void openEdit(m.id)}
+                          >
+                            Edit
+                          </button>{" "}
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => void toggleActive(m)}
+                          >
+                            {m.is_active ? "Nonaktifkan" : "Aktifkan"}
+                          </button>
+                        </>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
@@ -185,13 +276,13 @@ export default function MenusPage() {
       </section>
 
       <Drawer
-        open={drawerOpen}
-        title="Tambah menu"
-        description="Nama menu dan status."
-        onClose={() => setDrawerOpen(false)}
+        open={drawerMode !== null}
+        title={drawerMode === "edit" ? "Edit menu / resep" : "Tambah menu"}
+        description="Nama menu dan komposisi bahan per paket."
+        onClose={closeDrawer}
       >
         {formError ? <p className="error">{formError}</p> : null}
-        <form className="form" onSubmit={onSubmit}>
+        <form className="form" onSubmit={(e) => void onSubmit(e)}>
           <div className="field">
             <label className="label" htmlFor="menu-name">
               Nama menu
@@ -220,9 +311,10 @@ export default function MenusPage() {
                   required
                 >
                   <option value="">— pilih —</option>
-                  {items.map((it) => (
+                  {itemOptions.map((it) => (
                     <option key={it.id} value={it.id}>
                       {it.sku} — {it.name}
+                      {!it.is_active ? " (nonaktif)" : ""}
                     </option>
                   ))}
                 </select>
@@ -251,7 +343,7 @@ export default function MenusPage() {
             onClick={() =>
               setLines((prev) => [
                 ...prev,
-                { item_id: items[0]?.id ?? "", qty_per_paket: "1" },
+                { item_id: activeItems[0]?.id ?? "", qty_per_paket: "1" },
               ])
             }
           >
@@ -261,7 +353,7 @@ export default function MenusPage() {
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => setDrawerOpen(false)}
+              onClick={closeDrawer}
             >
               Batal
             </button>

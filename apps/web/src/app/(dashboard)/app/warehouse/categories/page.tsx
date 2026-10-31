@@ -14,7 +14,8 @@ export default function CategoriesPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [canWrite, setCanWrite] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<"create" | "edit" | null>(null);
+  const [editing, setEditing] = useState<Category | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -38,10 +39,24 @@ export default function CategoriesPage() {
     void load();
   }, [load]);
 
+  function closeDrawer() {
+    setDrawerMode(null);
+    setEditing(null);
+    setFormError(null);
+  }
+
   function openCreate() {
+    setEditing(null);
     setName("");
     setFormError(null);
-    setDrawerOpen(true);
+    setDrawerMode("create");
+  }
+
+  function openEdit(c: Category) {
+    setEditing(c);
+    setName(c.name);
+    setFormError(null);
+    setDrawerMode("edit");
   }
 
   async function onSubmit(e: FormEvent) {
@@ -50,14 +65,17 @@ export default function CategoriesPage() {
     setSaving(true);
     setFormError(null);
     try {
-      await warehouseApi.createCategory({ name });
-      setDrawerOpen(false);
-      toastSuccess("Kategori berhasil ditambahkan");
+      if (drawerMode === "create") {
+        await warehouseApi.createCategory({ name });
+        toastSuccess("Kategori berhasil ditambahkan");
+      } else if (drawerMode === "edit" && editing) {
+        await warehouseApi.patchCategory(editing.id, { name });
+        toastSuccess("Kategori diperbarui");
+      }
+      closeDrawer();
       await load();
     } catch (err) {
-      setFormError(
-        err instanceof Error ? err.message : "Gagal menambah kategori",
-      );
+      setFormError(err instanceof Error ? err.message : "Gagal menyimpan");
     } finally {
       setSaving(false);
     }
@@ -96,7 +114,11 @@ export default function CategoriesPage() {
             Muat ulang
           </button>
           {canWrite ? (
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={openCreate}
+            >
               Tambah kategori
             </button>
           ) : null}
@@ -125,12 +147,24 @@ export default function CategoriesPage() {
               <thead>
                 <tr>
                   <th>Nama</th>
+                  {canWrite ? <th>Aksi</th> : null}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((c) => (
                   <tr key={c.id}>
                     <td>{c.name}</td>
+                    {canWrite ? (
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => openEdit(c)}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -140,13 +174,13 @@ export default function CategoriesPage() {
       </section>
 
       <Drawer
-        open={drawerOpen}
-        title="Tambah kategori"
+        open={drawerMode !== null}
+        title={drawerMode === "edit" ? "Edit kategori" : "Tambah kategori"}
         description="Nama kategori."
-        onClose={() => setDrawerOpen(false)}
+        onClose={closeDrawer}
       >
         {formError ? <p className="error">{formError}</p> : null}
-        <form className="form" onSubmit={onSubmit}>
+        <form className="form" onSubmit={(e) => void onSubmit(e)}>
           <div className="field">
             <label className="label" htmlFor="cat-name">
               Nama
@@ -165,7 +199,7 @@ export default function CategoriesPage() {
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => setDrawerOpen(false)}
+              onClick={closeDrawer}
             >
               Batal
             </button>

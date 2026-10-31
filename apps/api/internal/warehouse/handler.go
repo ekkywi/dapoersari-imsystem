@@ -49,6 +49,33 @@ func (h *Handler) CreateUnit(w http.ResponseWriter, r *http.Request) {
 	respond.JSON(w, http.StatusCreated, u)
 }
 
+func (h *Handler) PatchUnit(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("unitID"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "id tidak valid")
+		return
+	}
+	var req PatchUnitRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
+	}
+	u, err := h.svc.PatchUnit(r.Context(), id, req)
+	if errors.Is(err, ErrNotFound) {
+		respond.Error(w, http.StatusNotFound, "satuan tidak ditemukan")
+		return
+	}
+	if errors.Is(err, ErrInvalidInput) {
+		respond.Error(w, http.StatusBadRequest, "data tidak valid")
+		return
+	}
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "gagal mengubah satuan")
+		return
+	}
+	respond.JSON(w, http.StatusOK, u)
+}
+
 func (h *Handler) ListCategories(w http.ResponseWriter, r *http.Request) {
 	out, err := h.svc.ListCategories(r.Context())
 	if err != nil {
@@ -77,6 +104,33 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respond.JSON(w, http.StatusCreated, c)
+}
+
+func (h *Handler) PatchCategory(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("categoryID"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "id tidak valid")
+		return
+	}
+	var req PatchCategoryRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
+	}
+	c, err := h.svc.PatchCategory(r.Context(), id, req)
+	if errors.Is(err, ErrNotFound) {
+		respond.Error(w, http.StatusNotFound, "kategori tidak ditemukan")
+		return
+	}
+	if errors.Is(err, ErrInvalidInput) {
+		respond.Error(w, http.StatusBadRequest, "data tidak valid")
+		return
+	}
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "gagal mengubah kategori")
+		return
+	}
+	respond.JSON(w, http.StatusOK, c)
 }
 
 func (h *Handler) ListSuppliers(w http.ResponseWriter, r *http.Request) {
@@ -109,6 +163,33 @@ func (h *Handler) CreateSupplier(w http.ResponseWriter, r *http.Request) {
 	respond.JSON(w, http.StatusCreated, s)
 }
 
+func (h *Handler) PatchSupplier(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("supplierID"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "id tidak valid")
+		return
+	}
+	var req PatchSupplierRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
+	}
+	s, err := h.svc.PatchSupplier(r.Context(), id, req)
+	if errors.Is(err, ErrNotFound) {
+		respond.Error(w, http.StatusNotFound, "pemasok tidak ditemukan")
+		return
+	}
+	if errors.Is(err, ErrInvalidInput) {
+		respond.Error(w, http.StatusBadRequest, "data tidak valid")
+		return
+	}
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "gagal mengubah pemasok")
+		return
+	}
+	respond.JSON(w, http.StatusOK, s)
+}
+
 func (h *Handler) ListItems(w http.ResponseWriter, r *http.Request) {
 	out, err := h.svc.ListItems(r.Context())
 	if err != nil {
@@ -137,6 +218,33 @@ func (h *Handler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respond.JSON(w, http.StatusCreated, it)
+}
+
+func (h *Handler) PatchItem(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("itemID"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "id tidak valid")
+		return
+	}
+	var req PatchItemRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
+	}
+	it, err := h.svc.PatchItem(r.Context(), id, req)
+	if errors.Is(err, ErrNotFound) {
+		respond.Error(w, http.StatusNotFound, "item tidak ditemukan")
+		return
+	}
+	if errors.Is(err, ErrInvalidInput) {
+		respond.Error(w, http.StatusBadRequest, "data tidak valid")
+		return
+	}
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "gagal mengubah item")
+		return
+	}
+	respond.JSON(w, http.StatusOK, it)
 }
 
 func (h *Handler) ListWarehouseStocks(w http.ResponseWriter, r *http.Request) {

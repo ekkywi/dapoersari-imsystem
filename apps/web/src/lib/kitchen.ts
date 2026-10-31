@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut } from "@/lib/api";
+import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 
 export type RecipeLine = {
   id: string;
@@ -59,6 +59,8 @@ export const kitchenApi = {
     name: string;
     lines: { item_id: string; qty_per_paket: number }[];
   }) => apiPost<Menu>("/api/v1/kitchen/menus", body),
+  patchMenu: (id: string, body: { name?: string; is_active?: boolean }) =>
+    apiPatch<Menu>(`/api/v1/kitchen/menus/${id}`, body),
   replaceRecipe: (
     id: string,
     body: { lines: { item_id: string; qty_per_paket: number }[] },

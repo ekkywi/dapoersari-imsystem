@@ -130,7 +130,7 @@ func (r *Repository) Update(ctx context.Context, id uuid.UUID, fullName, role st
 			is_active = $4,
 			updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, email, full_name, password_hash, role::text, is_active, created_at
+		RETURNING id, email, full_name, password_hash, role::text, is_active, created_at, updated_at
 	`
 	var u User
 	err := r.db.QueryRowContext(ctx, q, id, fullName, role, isActive).Scan(
@@ -141,7 +141,7 @@ func (r *Repository) Update(ctx context.Context, id uuid.UUID, fullName, role st
 		return User{}, ErrNotFound
 	}
 	if err != nil {
-		return User{}, fmt.Errorf("updated user: %w", err)
+		return User{}, fmt.Errorf("update user: %w", err)
 	}
 	return u, nil
 }

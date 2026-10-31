@@ -26,7 +26,8 @@ export default function ItemsPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [canWrite, setCanWrite] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<"create" | "edit" | null>(null);
+  const [editing, setEditing] = useState<Item | null>(null);
 
   const unitMap = useMemo(
     () => Object.fromEntries(units.map((u) => [u.id, u.code])),
@@ -73,14 +74,32 @@ export default function ItemsPage() {
     void load();
   }, [load]);
 
+  function closeDrawer() {
+    setDrawerMode(null);
+    setEditing(null);
+    setFormError(null);
+  }
+
   function openCreate() {
+    setEditing(null);
     setSku("");
     setName("");
     setMinStock("0");
     setCategoryId("");
     setUnitId(units[0]?.id ?? "");
     setFormError(null);
-    setDrawerOpen(true);
+    setDrawerMode("create");
+  }
+
+  function openEdit(it: Item) {
+    setEditing(it);
+    setSku(it.sku);
+    setName(it.name);
+    setMinStock(String(it.min_stock));
+    setCategoryId(it.category_id ?? "");
+    setUnitId(it.unit_id);
+    setFormError(null);
+    setDrawerMode("edit");
   }
 
   async function onSubmit(e: FormEvent) {
@@ -89,20 +108,53 @@ export default function ItemsPage() {
     setSaving(true);
     setFormError(null);
     try {
-      await warehouseApi.createItem({
-        sku,
-        name,
-        unit_id: unitId,
-        category_id: categoryId || null,
-        min_stock: Number(minStock) || 0,
-      });
-      setDrawerOpen(false);
-      toastSuccess("Item berhasil ditambahkan");
+      if (drawerMode === "create") {
+        await warehouseApi.createItem({
+          sku,
+          name,
+          unit_id: unitId,
+          category_id: categoryId || null,
+          min_stock: Number(minStock) || 0,
+        });
+        toastSuccess("Item berhasil ditambahkan");
+      } else if (drawerMode === "edit" && editing) {
+        const body: Parameters<typeof warehouseApi.patchItem>[1] = {
+          sku,
+          name,
+          min_stock: Number(minStock) || 0,
+        };
+        if (categoryId) {
+          body.category_id = categoryId;
+        } else {
+          body.clear_category = true;
+        }
+        await warehouseApi.patchItem(editing.id, body);
+        toastSuccess("Item diperbarui");
+      }
+      closeDrawer();
       await load();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Gagal menambah item");
+      setFormError(err instanceof Error ? err.message : "Gagal menyimpan");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleActive(it: Item) {
+    if (!canWrite) return;
+    const next = !it.is_active;
+    const ok = window.confirm(
+      next
+        ? `Aktifkan ${it.name}?`
+        : `Nonaktifkan ${it.name}? Item tidak bisa dipilih di transaksi baru.`,
+    );
+    if (!ok) return;
+    try {
+      await warehouseApi.patchItem(it.id, { is_active: next });
+      toastSuccess(next ? "Item diaktifkan" : "Item dinonaktifkan");
+      await load();
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Gagal mengubah status");
     }
   }
 
@@ -145,9 +197,7 @@ export default function ItemsPage() {
               onClick={openCreate}
               disabled={units.length === 0}
               title={
-                units.length === 0
-                  ? "Buat satuan terlebih dahulu"
-                  : undefined
+                units.length === 0 ? "Buat satuan terlebih dahulu" : undefined
               }
             >
               Tambah item
@@ -185,6 +235,7 @@ export default function ItemsPage() {
                   <th>Kategori</th>
                   <th>Min</th>
                   <th>Status</th>
+                  {canWrite ? <th>Aksi</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -208,6 +259,24 @@ export default function ItemsPage() {
                         <span className="badge badge-neutral">Nonaktif</span>
                       )}
                     </td>
+                    {canWrite ? (
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => openEdit(it)}
+                        >
+                          Edit
+                        </button>{" "}
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => void toggleActive(it)}
+                        >
+                          {it.is_active ? "Nonaktifkan" : "Aktifkan"}
+                        </button>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -217,16 +286,20 @@ export default function ItemsPage() {
       </section>
 
       <Drawer
-        open={drawerOpen}
-        title="Tambah item"
-        description="SKU, nama, satuan, kategori."
-        onClose={() => setDrawerOpen(false)}
+        open={drawerMode !== null}
+        title={drawerMode === "edit" ? "Edit item" : "Tambah item"}
+        description={
+          drawerMode === "edit"
+            ? "SKU, nama, kategori, min stok. Satuan tidak diubah."
+            : "SKU, nama, satuan, kategori."
+        }
+        onClose={closeDrawer}
       >
         {formError ? <p className="error">{formError}</p> : null}
         {units.length === 0 ? (
           <p className="muted">Buat satuan terlebih dahulu.</p>
         ) : (
-          <form className="form" onSubmit={onSubmit}>
+          <form className="form" onSubmit={(e) => void onSubmit(e)}>
             <div className="field">
               <label className="label" htmlFor="item-sku">
                 SKU
@@ -262,6 +335,7 @@ export default function ItemsPage() {
                 value={unitId}
                 onChange={(e) => setUnitId(e.target.value)}
                 required
+                disabled={drawerMode === "edit"}
               >
                 {units.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -306,15 +380,11 @@ export default function ItemsPage() {
               <button
                 type="button"
                 className="btn btn-ghost"
-                onClick={() => setDrawerOpen(false)}
+                onClick={closeDrawer}
               >
                 Batal
               </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={saving}
-              >
+              <button type="submit" className="btn btn-primary" disabled={saving}>
                 {saving ? "Menyimpan…" : "Simpan"}
               </button>
             </div>

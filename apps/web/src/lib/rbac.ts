@@ -48,6 +48,7 @@ export function navKeysForRole(role: string): Set<NavKey> {
         "closings",
         "opname-kitchen",
         "history",
+        "users",
       ]);
     case Role.AdminGudang:
       return new Set<NavKey>([

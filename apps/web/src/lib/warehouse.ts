@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPatch, apiPost } from "@/lib/api";
 
 export type Unit = {
   id: string;
@@ -69,10 +69,14 @@ export const warehouseApi = {
   listUnits: () => apiGet<Unit[]>("/api/v1/warehouse/units"),
   createUnit: (body: { code: string; name: string }) =>
     apiPost<Unit>("/api/v1/warehouse/units", body),
+  patchUnit: (id: string, body: { code?: string; name?: string }) =>
+    apiPatch<Unit>(`/api/v1/warehouse/units/${id}`, body),
 
   listCategories: () => apiGet<Category[]>("/api/v1/warehouse/categories"),
   createCategory: (body: { name: string }) =>
     apiPost<Category>("/api/v1/warehouse/categories", body),
+  patchCategory: (id: string, body: { name?: string }) =>
+    apiPatch<Category>(`/api/v1/warehouse/categories/${id}`, body),
 
   listSuppliers: () => apiGet<Supplier[]>("/api/v1/warehouse/suppliers"),
   createSupplier: (body: {
@@ -80,6 +84,15 @@ export const warehouseApi = {
     phone?: string | null;
     note?: string | null;
   }) => apiPost<Supplier>("/api/v1/warehouse/suppliers", body),
+  patchSupplier: (
+    id: string,
+    body: {
+      name?: string;
+      phone?: string | null;
+      note?: string | null;
+      is_active?: boolean;
+    },
+  ) => apiPatch<Supplier>(`/api/v1/warehouse/suppliers/${id}`, body),
 
   listItems: () => apiGet<Item[]>("/api/v1/warehouse/items"),
   createItem: (body: {
@@ -89,6 +102,17 @@ export const warehouseApi = {
     unit_id: string;
     min_stock: number;
   }) => apiPost<Item>("/api/v1/warehouse/items", body),
+  patchItem: (
+    id: string,
+    body: {
+      sku?: string;
+      name?: string;
+      category_id?: string | null;
+      clear_category?: boolean;
+      min_stock?: number;
+      is_active?: boolean;
+    },
+  ) => apiPatch<Item>(`/api/v1/warehouse/items/${id}`, body),
 
   listStocks: () => apiGet<WarehouseStock[]>("/api/v1/warehouse/stocks"),
 

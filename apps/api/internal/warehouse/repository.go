@@ -59,6 +59,43 @@ func (r *Repository) CreateUnit(ctx context.Context, code, name string) (Unit, e
 	return u, nil
 }
 
+func (r *Repository) FindUnitByID(ctx context.Context, id uuid.UUID) (Unit, error) {
+	const q = `
+		SELECT id, code, name, created_at
+		FROM units
+		WHERE id = $1
+		LIMIT 1
+	`
+	var u Unit
+	err := r.db.QueryRowContext(ctx, q, id).Scan(&u.ID, &u.Code, &u.Name, &u.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Unit{}, ErrNotFound
+	}
+	if err != nil {
+		return Unit{}, fmt.Errorf("find unit: %w", err)
+	}
+	return u, nil
+}
+
+func (r *Repository) UpdateUnit(ctx context.Context, id uuid.UUID, code, name string) (Unit, error) {
+	const q = `
+		UPDATE units
+		SET code = $2, name = $3
+		WHERE id = $1
+		RETURNING id, code, name, created_at
+	`
+	var u Unit
+	err := r.db.QueryRowContext(ctx, q, id, strings.TrimSpace(code), strings.TrimSpace(name)).
+		Scan(&u.ID, &u.Code, &u.Name, &u.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Unit{}, ErrNotFound
+	}
+	if err != nil {
+		return Unit{}, fmt.Errorf("update unit: %w", err)
+	}
+	return u, nil
+}
+
 // Categories
 func (r *Repository) ListCategories(ctx context.Context) ([]Category, error) {
 	const q = `
@@ -98,6 +135,43 @@ func (r *Repository) CreateCategory(ctx context.Context, name string) (Category,
 	return c, nil
 }
 
+func (r *Repository) FindCategoryByID(ctx context.Context, id uuid.UUID) (Category, error) {
+	const q = `
+		SELECT id, name, created_at
+		FROM categories
+		WHERE id = $1
+		LIMIT 1
+	`
+	var c Category
+	err := r.db.QueryRowContext(ctx, q, id).Scan(&c.ID, &c.Name, &c.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Category{}, ErrNotFound
+	}
+	if err != nil {
+		return Category{}, fmt.Errorf("find category: %w", err)
+	}
+	return c, nil
+}
+
+func (r *Repository) UpdateCategory(ctx context.Context, id uuid.UUID, name string) (Category, error) {
+	const q = `
+		UPDATE categories
+		SET name = $2
+		WHERE id = $1
+		RETURNING id, name, created_at
+	`
+	var c Category
+	err := r.db.QueryRowContext(ctx, q, id, strings.TrimSpace(name)).
+		Scan(&c.ID, &c.Name, &c.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Category{}, ErrNotFound
+	}
+	if err != nil {
+		return Category{}, fmt.Errorf("update category: %w", err)
+	}
+	return c, nil
+}
+
 // Suppliers
 func (r *Repository) ListSuppliers(ctx context.Context) ([]Supplier, error) {
 	const q = `
@@ -133,6 +207,25 @@ func (r *Repository) CreateSupplier(ctx context.Context, name string, phone, not
 		Scan(&s.ID, &s.Name, &s.Phone, &s.Note, &s.IsActive, &s.CreatedAt)
 	if err != nil {
 		return Supplier{}, fmt.Errorf("create supplier: %w", err)
+	}
+	return s, nil
+}
+
+func (r *Repository) UpdateSupplier(ctx context.Context, id uuid.UUID, name string, phone, note *string, isActive bool) (Supplier, error) {
+	const q = `
+		UPDATE suppliers
+		SET name = $2, phone = $3, note = $4, is_active = $5
+		WHERE id = $1
+		RETURNING id, name, phone, note, is_active, created_at
+	`
+	var s Supplier
+	err := r.db.QueryRowContext(ctx, q, id, strings.TrimSpace(name), phone, note, isActive).
+		Scan(&s.ID, &s.Name, &s.Phone, &s.Note, &s.IsActive, &s.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Supplier{}, ErrNotFound
+	}
+	if err != nil {
+		return Supplier{}, fmt.Errorf("update supplier: %w", err)
 	}
 	return s, nil
 }
@@ -234,6 +327,39 @@ func (r *Repository) CreateItem(ctx context.Context, it Item) (Item, error) {
 		return Item{}, fmt.Errorf("commit create item: %w", err)
 	}
 	return created, nil
+}
+
+func (r *Repository) UpdateItem(ctx context.Context, it Item) (Item, error) {
+	const q = `
+		UPDATE items
+		SET sku = $2,
+		    name = $3,
+		    category_id = $4,
+		    min_stock = $5,
+		    is_active = $6
+		WHERE id = $1
+		RETURNING id, sku, name, category_id, unit_id, min_stock, is_active, created_at
+	`
+	var out Item
+	err := r.db.QueryRowContext(
+		ctx, q,
+		it.ID,
+		strings.TrimSpace(it.SKU),
+		strings.TrimSpace(it.Name),
+		it.CategoryID,
+		it.MinStock,
+		it.IsActive,
+	).Scan(
+		&out.ID, &out.SKU, &out.Name, &out.CategoryID, &out.UnitID,
+		&out.MinStock, &out.IsActive, &out.CreatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Item{}, ErrNotFound
+	}
+	if err != nil {
+		return Item{}, fmt.Errorf("update item: %w", err)
+	}
+	return out, nil
 }
 
 // WarehouseStock

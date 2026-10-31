@@ -49,6 +49,11 @@ func NewRouter(
 	authOnly := func(h http.HandlerFunc) http.Handler {
 		return middleware.Auth(authSvc)(h)
 	}
+	superAdminOnly := func(h http.HandlerFunc) http.Handler {
+		return middleware.Auth(authSvc)(
+			middleware.RequireRole(auth.RoleSuperAdmin)(h),
+		)
+	}
 	warehouseWrite := func(h http.HandlerFunc) http.Handler {
 		return middleware.Auth(authSvc)(
 			middleware.RequireRole(auth.RoleSuperAdmin, auth.RoleAdminGudang)(h),
@@ -64,15 +69,25 @@ func NewRouter(
 	mux.HandleFunc("POST /api/v1/auth/login", authHandler.Login)
 	mux.Handle("GET /api/v1/auth/me", authOnly(authHandler.Me))
 
+	// Admin — Super Admin only (soft deactivate; no hard delete)
+	mux.Handle("GET /api/v1/admin/users", superAdminOnly(authHandler.ListUsers))
+	mux.Handle("POST /api/v1/admin/users", superAdminOnly(authHandler.CreateUser))
+	mux.Handle("PATCH /api/v1/admin/users/{userID}", superAdminOnly(authHandler.PatchUser))
+	mux.Handle("POST /api/v1/admin/users/{userID}/reset-password", superAdminOnly(authHandler.ResetPassword))
+
 	// Warehouse
 	mux.Handle("GET /api/v1/warehouse/units", authOnly(warehouseHandler.ListUnits))
 	mux.Handle("POST /api/v1/warehouse/units", warehouseWrite(warehouseHandler.CreateUnit))
+	mux.Handle("PATCH /api/v1/warehouse/units/{unitID}", warehouseWrite(warehouseHandler.PatchUnit))
 	mux.Handle("GET /api/v1/warehouse/categories", authOnly(warehouseHandler.ListCategories))
 	mux.Handle("POST /api/v1/warehouse/categories", warehouseWrite(warehouseHandler.CreateCategory))
+	mux.Handle("PATCH /api/v1/warehouse/categories/{categoryID}", warehouseWrite(warehouseHandler.PatchCategory))
 	mux.Handle("GET /api/v1/warehouse/suppliers", authOnly(warehouseHandler.ListSuppliers))
 	mux.Handle("POST /api/v1/warehouse/suppliers", warehouseWrite(warehouseHandler.CreateSupplier))
+	mux.Handle("PATCH /api/v1/warehouse/suppliers/{supplierID}", warehouseWrite(warehouseHandler.PatchSupplier))
 	mux.Handle("GET /api/v1/warehouse/items", authOnly(warehouseHandler.ListItems))
 	mux.Handle("POST /api/v1/warehouse/items", warehouseWrite(warehouseHandler.CreateItem))
+	mux.Handle("PATCH /api/v1/warehouse/items/{itemID}", warehouseWrite(warehouseHandler.PatchItem))
 	mux.Handle("GET /api/v1/warehouse/stocks", authOnly(warehouseHandler.ListWarehouseStocks))
 	mux.Handle("GET /api/v1/warehouse/stocks/{itemID}", authOnly(warehouseHandler.GetWarehouseStock))
 	mux.Handle("GET /api/v1/warehouse/stock-ins", authOnly(warehouseHandler.ListStockIns))
@@ -83,6 +98,7 @@ func NewRouter(
 	mux.Handle("GET /api/v1/kitchen/menus", authOnly(kitchenHandler.ListMenus))
 	mux.Handle("GET /api/v1/kitchen/menus/{menuID}", authOnly(kitchenHandler.GetMenu))
 	mux.Handle("POST /api/v1/kitchen/menus", kitchenWrite(kitchenHandler.CreateMenu))
+	mux.Handle("PATCH /api/v1/kitchen/menus/{menuID}", kitchenWrite(kitchenHandler.PatchMenu))
 	mux.Handle("PUT /api/v1/kitchen/menus/{menuID}/recipe", kitchenWrite(kitchenHandler.ReplaceRecipe))
 	mux.Handle("GET /api/v1/kitchen/stocks", authOnly(kitchenHandler.ListKitchenStocks))
 	mux.Handle("GET /api/v1/kitchen/closings", authOnly(kitchenHandler.ListClosings))

@@ -103,3 +103,30 @@ type CreateStockInRequest struct {
 	Note       *string    `json:"note"`
 	ExpiredAt  *time.Time `json:"expired_at"`
 }
+
+type PatchUnitRequest struct {
+	Code *string `json:"code"`
+	Name *string `json:"name"`
+}
+
+type PatchCategoryRequest struct {
+	Name *string `json:"name"`
+}
+
+type PatchSupplierRequest struct {
+	Name     *string `json:"name"`
+	Phone    *string `json:"phone"`
+	Note     *string `json:"note"`
+	IsActive *bool   `json:"is_active"`
+}
+
+// PatchItemRequest — unit_id intentionally not patchable (history safety).
+type PatchItemRequest struct {
+	SKU        *string    `json:"sku"`
+	Name       *string    `json:"name"`
+	CategoryID *uuid.UUID `json:"category_id"`
+	MinStock   *float64   `json:"min_stock"`
+	IsActive   *bool      `json:"is_active"`
+	// ClearCategory when true sets category_id to NULL (ignored if CategoryID set).
+	ClearCategory bool `json:"clear_category"`
+}

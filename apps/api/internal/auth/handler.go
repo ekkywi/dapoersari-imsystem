@@ -83,6 +83,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
 	}
 
 	user, err := h.svc.CreateUser(r.Context(), req)

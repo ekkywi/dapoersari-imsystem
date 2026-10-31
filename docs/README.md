@@ -18,10 +18,10 @@ This repository implements a dual-location inventory system (Warehouse ↔ Kitch
 
 | Area | Highlights |
 |------|------------|
-| Gudang | Masters, persediaan, persediaan masuk, antrian permintaan, opname |
+| Gudang | Masters (edit + soft nonaktif item/pemasok), persediaan, stok masuk, antrian, opname |
 | Dapur | Resep/menu, persediaan dapur, permintaan, akhir shift, opname |
 | Audit | Riwayat mutasi + aktivitas; BA opname, permintaan, stok masuk (cetak browser) |
-| Administrasi | Super Admin: kelola pengguna (sedang dilengkapi) |
+| Administrasi | Super Admin: kelola pengguna (buat, edit, nonaktif, reset sandi) |
 | Operasional | Ringkasan angka; peringatan persediaan (min-stock, in-transit dapur); kategori di stok/alert/BA |
 
 ## Applications

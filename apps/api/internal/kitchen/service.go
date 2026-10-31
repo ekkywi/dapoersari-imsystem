@@ -53,6 +53,27 @@ func (s *Service) ReplaceRecipe(ctx context.Context, menuID uuid.UUID, req Repla
 	return s.repo.ReplaceRecipe(ctx, menuID, lines)
 }
 
+func (s *Service) PatchMenu(ctx context.Context, id uuid.UUID, req PatchMenuRequest) (Menu, error) {
+	if id == uuid.Nil {
+		return Menu{}, ErrInvalidInput
+	}
+	cur, err := s.repo.GetMenu(ctx, id)
+	if err != nil {
+		return Menu{}, err
+	}
+	name, active := cur.Name, cur.IsActive
+	if req.Name != nil {
+		name = strings.TrimSpace(*req.Name)
+		if name == "" {
+			return Menu{}, ErrInvalidInput
+		}
+	}
+	if req.IsActive != nil {
+		active = *req.IsActive
+	}
+	return s.repo.UpdateMenu(ctx, id, name, active)
+}
+
 func (s *Service) validateLines(ctx context.Context, in []RecipeLineInput) ([]RecipeLineInput, error) {
 	if len(in) == 0 {
 		return nil, ErrInvalidInput

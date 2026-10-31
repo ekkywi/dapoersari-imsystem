@@ -16,7 +16,8 @@ export default function SuppliersPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [canWrite, setCanWrite] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<"create" | "edit" | null>(null);
+  const [editing, setEditing] = useState<Supplier | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -44,12 +45,28 @@ export default function SuppliersPage() {
     void load();
   }, [load]);
 
+  function closeDrawer() {
+    setDrawerMode(null);
+    setEditing(null);
+    setFormError(null);
+  }
+
   function openCreate() {
+    setEditing(null);
     setName("");
     setPhone("");
     setNote("");
     setFormError(null);
-    setDrawerOpen(true);
+    setDrawerMode("create");
+  }
+
+  function openEdit(s: Supplier) {
+    setEditing(s);
+    setName(s.name);
+    setPhone(s.phone ?? "");
+    setNote(s.note ?? "");
+    setFormError(null);
+    setDrawerMode("edit");
   }
 
   async function onSubmit(e: FormEvent) {
@@ -58,20 +75,43 @@ export default function SuppliersPage() {
     setSaving(true);
     setFormError(null);
     try {
-      await warehouseApi.createSupplier({
-        name,
-        phone: phone.trim() || null,
-        note: note.trim() || null,
-      });
-      setDrawerOpen(false);
-      toastSuccess("Pemasok berhasil ditambahkan");
+      if (drawerMode === "create") {
+        await warehouseApi.createSupplier({
+          name,
+          phone: phone.trim() || null,
+          note: note.trim() || null,
+        });
+        toastSuccess("Pemasok berhasil ditambahkan");
+      } else if (drawerMode === "edit" && editing) {
+        await warehouseApi.patchSupplier(editing.id, {
+          name,
+          phone: phone.trim() || null,
+          note: note.trim() || null,
+        });
+        toastSuccess("Pemasok diperbarui");
+      }
+      closeDrawer();
       await load();
     } catch (err) {
-      setFormError(
-        err instanceof Error ? err.message : "Gagal menambah pemasok",
-      );
+      setFormError(err instanceof Error ? err.message : "Gagal menyimpan");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleActive(s: Supplier) {
+    if (!canWrite) return;
+    const next = !s.is_active;
+    const ok = window.confirm(
+      next ? `Aktifkan ${s.name}?` : `Nonaktifkan ${s.name}?`,
+    );
+    if (!ok) return;
+    try {
+      await warehouseApi.patchSupplier(s.id, { is_active: next });
+      toastSuccess(next ? "Pemasok diaktifkan" : "Pemasok dinonaktifkan");
+      await load();
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Gagal mengubah status");
     }
   }
 
@@ -108,7 +148,11 @@ export default function SuppliersPage() {
             Muat ulang
           </button>
           {canWrite ? (
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={openCreate}
+            >
               Tambah pemasok
             </button>
           ) : null}
@@ -139,6 +183,7 @@ export default function SuppliersPage() {
                   <th>Nama</th>
                   <th>Telepon</th>
                   <th>Status</th>
+                  {canWrite ? <th>Aksi</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -153,6 +198,24 @@ export default function SuppliersPage() {
                         <span className="badge badge-neutral">Nonaktif</span>
                       )}
                     </td>
+                    {canWrite ? (
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => openEdit(s)}
+                        >
+                          Edit
+                        </button>{" "}
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => void toggleActive(s)}
+                        >
+                          {s.is_active ? "Nonaktifkan" : "Aktifkan"}
+                        </button>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -162,13 +225,13 @@ export default function SuppliersPage() {
       </section>
 
       <Drawer
-        open={drawerOpen}
-        title="Tambah pemasok"
+        open={drawerMode !== null}
+        title={drawerMode === "edit" ? "Edit pemasok" : "Tambah pemasok"}
         description="Nama dan kontak."
-        onClose={() => setDrawerOpen(false)}
+        onClose={closeDrawer}
       >
         {formError ? <p className="error">{formError}</p> : null}
-        <form className="form" onSubmit={onSubmit}>
+        <form className="form" onSubmit={(e) => void onSubmit(e)}>
           <div className="field">
             <label className="label" htmlFor="sup-name">
               Nama
@@ -208,7 +271,7 @@ export default function SuppliersPage() {
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => setDrawerOpen(false)}
+              onClick={closeDrawer}
             >
               Batal
             </button>
