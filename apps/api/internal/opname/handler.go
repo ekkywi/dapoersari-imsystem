@@ -102,6 +102,18 @@ func mapOpnameErr(w http.ResponseWriter, err error, fallback string) bool {
 		respond.Error(w, http.StatusNotFound, "data tidak ditemukan")
 		return true
 	}
+	if errors.Is(err, ErrClosingMissing) {
+		respond.ErrorWithDetails(w, http.StatusConflict,
+			"belum ada akhir shift (closing) dapur untuk hari ini; lakukan closing dulu sebelum menghitung, atau konfirmasi tetap lanjut",
+			"closing_missing", nil)
+		return true
+	}
+	if errors.Is(err, ErrClosingAfterDraft) {
+		respond.ErrorWithDetails(w, http.StatusConflict,
+			"ada akhir shift (closing) yang dicatat setelah draf ini dibuat; pemakaiannya akan terhitung dua kali. Buat draf opname baru setelah closing",
+			"closing_after_draft", nil)
+		return true
+	}
 	if errors.Is(err, ErrForbidden) {
 		respond.Error(w, http.StatusForbidden, "akses ditolak untuk peran ini")
 		return true

@@ -40,12 +40,16 @@ export type MenuClosingLine = {
   item_name: string;
   unit_code: string;
   qty: number;
+  /** Part of qty that could not be deducted because stock was short. */
+  shortage_qty: number;
 };
 
 export type MenuClosing = {
   id: string;
   closing_date: string;
   note?: string | null;
+  shortage_note?: string | null;
+  has_shortage: boolean;
   created_by: string;
   created_at: string;
   packages?: MenuClosingPackage[];
@@ -73,5 +77,7 @@ export const kitchenApi = {
     closing_date: string;
     note?: string | null;
     packages: { menu_id: string; qty_paket: number }[];
+    allow_shortage?: boolean;
+    shortage_note?: string | null;
   }) => apiPost<MenuClosing>("/api/v1/kitchen/closings", body),
 };

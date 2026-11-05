@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { ApiError } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import {
   parseRequestFocus,
@@ -100,10 +101,16 @@ function OpnameDetailContent() {
     if (!doc || !canMutate) return;
     setBusy(true);
     try {
-      const updated = await opnameApi.confirm(doc.id);
+      const updated: Opname = await opnameApi.confirm(doc.id);
       setDoc(updated);
       toastSuccess("Opname dikonfirmasi; persediaan disesuaikan");
     } catch (e) {
+      if (e instanceof ApiError && e.code === "closing_after_draft") {
+        window.alert(
+          "Ada akhir shift (closing) yang dicatat setelah draf ini dibuat. Pemakaiannya kemungkinan sudah tercermin di hitungan fisik, sehingga akan terpotong dua kali.\n\nBuat draf opname baru (hitung ulang) setelah closing.",
+        );
+        return;
+      }
       toastError(e instanceof Error ? e.message : "Gagal konfirmasi");
     } finally {
       setBusy(false);

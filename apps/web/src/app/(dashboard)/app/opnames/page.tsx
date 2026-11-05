@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Drawer } from "@/components/ui/Drawer";
+import { ApiError } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { kitchenApi, KitchenStock } from "@/lib/kitchen";
 import {
@@ -133,11 +134,17 @@ function OpnamesContent() {
     setSaving(true);
     setFormError(null);
     try {
-      await opnameApi.create({
-        location,
-        note: note.trim() || null,
-        lines,
-      });
+      const body = { location, note: note.trim() || null, lines };
+      try {
+        await opnameApi.create(body);
+      } catch (err) {
+        if (!(err instanceof ApiError && err.code === "closing_missing")) throw err;
+        const go = window.confirm(
+          "Belum ada akhir shift (closing) dapur untuk hari ini. Sebaiknya lakukan closing dulu, lalu hitung fisik, baru buat draf.\n\nPeringatan: closing yang dicatat SETELAH draf ini akan membuat draf tidak bisa dikonfirmasi.\n\nTetap buat draf sekarang?",
+        );
+        if (!go) return;
+        await opnameApi.create({ ...body, acknowledge_no_closing: true });
+      }
       setDrawerOpen(false);
       toastSuccess("Draf opname dibuat — konfirmasi di detail");
       await load();

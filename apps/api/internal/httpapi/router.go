@@ -113,6 +113,7 @@ func NewRouter(
 	mux.Handle("POST /api/v1/stock-requests/{requestID}/reject", warehouseWrite(transferHandler.Reject))
 	mux.Handle("POST /api/v1/stock-requests/{requestID}/transfer", warehouseWrite(transferHandler.Transfer))
 	mux.Handle("POST /api/v1/stock-requests/{requestID}/receive", kitchenWrite(transferHandler.Receive))
+	mux.Handle("POST /api/v1/stock-requests/{requestID}/cancel", kitchenWrite(transferHandler.Cancel))
 
 	// Opname — role vs location enforced in service
 	mux.Handle("GET /api/v1/opnames", authOnly(opnameHandler.List))

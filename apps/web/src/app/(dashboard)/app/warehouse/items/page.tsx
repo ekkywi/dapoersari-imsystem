@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Drawer } from "@/components/ui/Drawer";
 import { getUser } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
 import { toastError, toastSuccess } from "@/lib/toast";
 import {
   Category,
@@ -154,6 +155,13 @@ export default function ItemsPage() {
       toastSuccess(next ? "Item diaktifkan" : "Item dinonaktifkan");
       await load();
     } catch (e) {
+      if (e instanceof ApiError && e.code === "item_in_use") {
+        const reasons = Array.isArray(e.details)
+          ? (e.details as { keterangan: string }[]).map((d) => `• ${d.keterangan}`)
+          : [];
+        window.alert(`${it.name} tidak bisa dinonaktifkan:\n${reasons.join("\n")}`);
+        return;
+      }
       toastError(e instanceof Error ? e.message : "Gagal mengubah status");
     }
   }

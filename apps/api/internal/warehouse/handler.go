@@ -232,6 +232,12 @@ func (h *Handler) PatchItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	it, err := h.svc.PatchItem(r.Context(), id, req)
+	var inUse *ItemInUseError
+	if errors.As(err, &inUse) {
+		respond.ErrorWithDetails(w, http.StatusConflict,
+			"item tidak bisa dinonaktifkan karena masih dipakai", "item_in_use", inUse.Usages)
+		return
+	}
 	if errors.Is(err, ErrNotFound) {
 		respond.Error(w, http.StatusNotFound, "item tidak ditemukan")
 		return
@@ -325,6 +331,11 @@ func (h *Handler) CreateStockIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.svc.CreateStockIn(r.Context(), userID, req)
+	if errors.Is(err, ErrItemInactive) {
+		respond.ErrorWithDetails(w, http.StatusConflict,
+			"item nonaktif tidak bisa dicatat sebagai stok masuk", "item_inactive", nil)
+		return
+	}
 	if errors.Is(err, ErrInvalidInput) {
 		respond.Error(w, http.StatusBadRequest, "data tidak valid")
 		return

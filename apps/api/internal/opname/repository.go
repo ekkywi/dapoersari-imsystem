@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -234,34 +235,43 @@ func (r *Repository) Confirm(ctx context.Context, o Opname, actor uuid.UUID) err
 		if delta == 0 {
 			continue
 		}
-		var qtyAfter float64
+		var table string
 		switch o.Location {
 		case LocationWarehouse:
-			err = tx.QueryRowContext(ctx, `
-				UPDATE warehouse_stocks
-				SET qty = $2, updated_at = now()
-				WHERE item_id = $1
-				RETURNING qty
-			`, line.ItemID, line.PhysicalQty).Scan(&qtyAfter)
-			if errors.Is(err, sql.ErrNoRows) {
-				err = tx.QueryRowContext(ctx, `
-					INSERT INTO warehouse_stocks (item_id, qty, updated_at)
-					VALUES ($1, $2, now())
-					RETURNING qty
-				`, line.ItemID, line.PhysicalQty).Scan(&qtyAfter)
-			}
+			table = "warehouse_stocks"
 		case LocationKitchen:
-			err = tx.QueryRowContext(ctx, `
-				INSERT INTO kitchen_stocks (item_id, qty, updated_at)
-				VALUES ($1, $2, now())
-				ON CONFLICT (item_id) DO UPDATE
-				SET qty = EXCLUDED.qty, updated_at = now()
-				RETURNING qty
-			`, line.ItemID, line.PhysicalQty).Scan(&qtyAfter)
+			table = "kitchen_stocks"
 		default:
 			return fmt.Errorf("unknown location")
 		}
+
+		// Apply the counted variance to the CURRENT stock, not overwrite it with
+		// the physical count: movements (stock-in, transfer, closing) that happened
+		// between drafting and confirming must be preserved.
+		var current float64
+		err = tx.QueryRowContext(ctx,
+			`SELECT qty FROM `+table+` WHERE item_id = $1 FOR UPDATE`,
+			line.ItemID).Scan(&current)
+		if errors.Is(err, sql.ErrNoRows) {
+			current, err = 0, nil
+		}
 		if err != nil {
+			return fmt.Errorf("lock stock: %w", err)
+		}
+		qtyAfter := current + delta
+		if qtyAfter < 0 {
+			qtyAfter = 0
+		}
+		delta = qtyAfter - current
+		if delta == 0 {
+			continue
+		}
+		if _, err = tx.ExecContext(ctx, `
+			INSERT INTO `+table+` (item_id, qty, updated_at)
+			VALUES ($1, $2, now())
+			ON CONFLICT (item_id) DO UPDATE
+			SET qty = EXCLUDED.qty, updated_at = now()
+		`, line.ItemID, qtyAfter); err != nil {
 			return fmt.Errorf("adjust stock: %w", err)
 		}
 		if _, err := tx.ExecContext(ctx, `
@@ -281,4 +291,29 @@ func (r *Repository) Confirm(ctx context.Context, o Opname, actor uuid.UUID) err
 	}
 
 	return tx.Commit()
+}
+
+// HasClosingToday reports whether a menu closing exists for today (Asia/Jakarta).
+func (r *Repository) HasClosingToday(ctx context.Context) (bool, error) {
+	var ok bool
+	err := r.db.QueryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM menu_closings
+			WHERE closing_date = (now() AT TIME ZONE 'Asia/Jakarta')::date
+		)
+	`).Scan(&ok)
+	if err != nil {
+		return false, fmt.Errorf("closing today: %w", err)
+	}
+	return ok, nil
+}
+
+// CountClosingsSince counts menu closings recorded after t (the draft snapshot).
+func (r *Repository) CountClosingsSince(ctx context.Context, t time.Time) (int, error) {
+	var n int
+	if err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM menu_closings WHERE created_at > $1`, t).Scan(&n); err != nil {
+		return 0, fmt.Errorf("closings since: %w", err)
+	}
+	return n, nil
 }

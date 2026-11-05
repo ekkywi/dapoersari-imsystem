@@ -64,6 +64,17 @@ func (s *Service) Create(ctx context.Context, actor uuid.UUID, role string, req 
 	if len(req.Lines) == 0 {
 		return Opname{}, ErrInvalidInput
 	}
+	// Kitchen counts must be taken after today's usage is posted: the draft
+	// snapshot is the baseline the variance is measured against.
+	if loc == LocationKitchen && !req.AcknowledgeNoClosing {
+		has, err := s.repo.HasClosingToday(ctx)
+		if err != nil {
+			return Opname{}, err
+		}
+		if !has {
+			return Opname{}, ErrClosingMissing
+		}
+	}
 
 	seen := map[uuid.UUID]struct{}{}
 	lines := make([]OpnameLine, 0, len(req.Lines))
@@ -112,6 +123,14 @@ func (s *Service) Create(ctx context.Context, actor uuid.UUID, role string, req 
 	})
 }
 
+// ErrClosingMissing: kitchen draft created before today's shift closing.
+var ErrClosingMissing = errors.New("closing missing")
+
+// ErrClosingAfterDraft: a closing was posted after the kitchen draft snapshot.
+// Its usage is usually already reflected in the physical count, so applying
+// the draft variance would deduct that usage twice. A new draft is required.
+var ErrClosingAfterDraft = errors.New("closing after draft")
+
 func (s *Service) Confirm(ctx context.Context, id, actor uuid.UUID, role string) (Opname, error) {
 	if id == uuid.Nil || actor == uuid.Nil {
 		return Opname{}, ErrInvalidInput
@@ -125,6 +144,15 @@ func (s *Service) Confirm(ctx context.Context, id, actor uuid.UUID, role string)
 	}
 	if !canMutateLocation(role, o.Location) {
 		return Opname{}, ErrForbidden
+	}
+	if o.Location == LocationKitchen {
+		n, err := s.repo.CountClosingsSince(ctx, o.CreatedAt)
+		if err != nil {
+			return Opname{}, err
+		}
+		if n > 0 {
+			return Opname{}, ErrClosingAfterDraft
+		}
 	}
 	if err := s.repo.Confirm(ctx, o, actor); err != nil {
 		return Opname{}, err

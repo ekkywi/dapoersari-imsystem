@@ -540,3 +540,44 @@ func (r *Repository) FindStockInByID(ctx context.Context, id uuid.UUID) (StockIn
 	}
 	return d, nil
 }
+
+// ItemUsage is one reason an item cannot be deactivated.
+type ItemUsage struct {
+	Alasan     string `json:"alasan"`
+	Keterangan string `json:"keterangan"`
+}
+
+// ItemUsages lists everything that still depends on the item.
+func (r *Repository) ItemUsages(ctx context.Context, itemID uuid.UUID) ([]ItemUsage, error) {
+	const q = `
+		SELECT 'resep_menu_aktif', 'Dipakai resep menu aktif: ' || string_agg(m.name, ', ' ORDER BY m.name)
+		FROM recipe_lines rl JOIN menus m ON m.id = rl.menu_id
+		WHERE rl.item_id = $1 AND m.is_active
+		HAVING COUNT(*) > 0
+		UNION ALL
+		SELECT 'stok_gudang', 'Stok gudang masih ' || qty::text
+		FROM warehouse_stocks WHERE item_id = $1 AND qty > 0
+		UNION ALL
+		SELECT 'stok_dapur', 'Stok dapur masih ' || qty::text
+		FROM kitchen_stocks WHERE item_id = $1 AND qty > 0
+		UNION ALL
+		SELECT 'permintaan_berjalan', 'Ada di ' || COUNT(DISTINCT r.id)::text || ' permintaan stok yang masih berjalan'
+		FROM stock_request_lines l JOIN stock_requests r ON r.id = l.request_id
+		WHERE l.item_id = $1 AND r.status IN ('submitted', 'approved', 'transferred')
+		HAVING COUNT(*) > 0
+	`
+	rows, err := r.db.QueryContext(ctx, q, itemID)
+	if err != nil {
+		return nil, fmt.Errorf("item usages: %w", err)
+	}
+	defer rows.Close()
+	var out []ItemUsage
+	for rows.Next() {
+		var u ItemUsage
+		if err := rows.Scan(&u.Alasan, &u.Keterangan); err != nil {
+			return nil, fmt.Errorf("scan item usage: %w", err)
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
