@@ -52,6 +52,8 @@ export const opnameApi = {
     location: string;
     note?: string | null;
     lines: { item_id: string; physical_qty: number }[];
+    acknowledge_no_closing?: boolean;
   }) => apiPost<Opname>("/api/v1/opnames", body),
-  confirm: (id: string) => apiPost<Opname>(`/api/v1/opnames/${id}/confirm`, {}),
+  confirm: (id: string) =>
+    apiPost<Opname>(`/api/v1/opnames/${id}/confirm`, {}),
 };

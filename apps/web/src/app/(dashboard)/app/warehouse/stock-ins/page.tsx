@@ -45,6 +45,8 @@ export default function StockInsPage() {
     () => Object.fromEntries(items.map((it) => [it.id, it])),
     [items],
   );
+  // Inactive items cannot receive stock; keep them only for labelling history.
+  const activeItems = useMemo(() => items.filter((it) => it.is_active), [items]);
   const supplierMap = useMemo(
     () => Object.fromEntries(suppliers.map((s) => [s.id, s.name])),
     [suppliers],
@@ -112,7 +114,7 @@ export default function StockInsPage() {
   }, [load]);
 
   function openCreate() {
-    setItemId(items[0]?.id ?? "");
+    setItemId(activeItems[0]?.id ?? "");
     setSupplierId("");
     setQty("");
     setNote("");
@@ -191,9 +193,9 @@ export default function StockInsPage() {
               type="button"
               className="btn btn-primary"
               onClick={openCreate}
-              disabled={items.length === 0}
+              disabled={activeItems.length === 0}
               title={
-                items.length === 0 ? "Buat item terlebih dahulu" : undefined
+                activeItems.length === 0 ? "Belum ada item aktif" : undefined
               }
             >
               Catat persediaan masuk
@@ -295,7 +297,7 @@ export default function StockInsPage() {
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}
-        {items.length === 0 ? (
+        {activeItems.length === 0 ? (
           <p className="muted">Tambah item katalog terlebih dahulu.</p>
         ) : (
           <form className="form" onSubmit={onSubmit}>
@@ -310,7 +312,7 @@ export default function StockInsPage() {
                 onChange={(e) => setItemId(e.target.value)}
                 required
               >
-                {items.map((it) => {
+                {activeItems.map((it) => {
                   const unit = unitMap[it.unit_id] ?? "";
                   return (
                     <option key={it.id} value={it.id}>

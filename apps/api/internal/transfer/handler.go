@@ -3,10 +3,12 @@ package transfer
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 
 	"dapoersari-imsystem/apps/api/internal/auth"
 	"dapoersari-imsystem/apps/api/internal/httpapi/respond"
+	"dapoersari-imsystem/apps/api/internal/stockcheck"
 
 	"github.com/google/uuid"
 )
@@ -73,7 +75,12 @@ func (h *Handler) Approve(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusBadRequest, "data tidak valid")
 		return
 	}
-	req, err := h.svc.Approve(r.Context(), id, userID)
+	var body ApproveRequestRequest
+	if err := decodeOptional(r, &body); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
+	}
+	req, err := h.svc.Approve(r.Context(), id, userID, body)
 	if mapTransferErr(w, err, "gagal menyetujui permintaan") {
 		return
 	}
@@ -111,7 +118,12 @@ func (h *Handler) Transfer(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusBadRequest, "data tidak valid")
 		return
 	}
-	req, err := h.svc.Transfer(r.Context(), id, userID)
+	var body TransferRequestRequest
+	if err := decodeOptional(r, &body); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
+	}
+	req, err := h.svc.Transfer(r.Context(), id, userID, body)
 	if mapTransferErr(w, err, "gagal mentransfer persediaan") {
 		return
 	}
@@ -129,11 +141,48 @@ func (h *Handler) Receive(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusBadRequest, "data tidak valid")
 		return
 	}
-	req, err := h.svc.Receive(r.Context(), id, userID)
+	var body ReceiveRequestRequest
+	if err := decodeOptional(r, &body); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
+	}
+	req, err := h.svc.Receive(r.Context(), id, userID, body)
 	if mapTransferErr(w, err, "gagal menerima persediaan") {
 		return
 	}
 	respond.JSON(w, http.StatusOK, req)
+}
+
+func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.UserIDFromContext(r.Context())
+	if !ok {
+		respond.Error(w, http.StatusUnauthorized, "tidak diizinkan")
+		return
+	}
+	id, err := uuid.Parse(r.PathValue("requestID"))
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "data tidak valid")
+		return
+	}
+	var body CancelRequestRequest
+	if err := decodeOptional(r, &body); err != nil {
+		respond.Error(w, http.StatusBadRequest, "JSON body permintaan tidak valid")
+		return
+	}
+	req, err := h.svc.Cancel(r.Context(), id, userID, body.Reason)
+	if mapTransferErr(w, err, "gagal membatalkan permintaan") {
+		return
+	}
+	respond.JSON(w, http.StatusOK, req)
+}
+
+// decodeOptional decodes a JSON body if present; an empty body is fine.
+func decodeOptional(r *http.Request, dst any) error {
+	err := json.NewDecoder(r.Body).Decode(dst)
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+	return err
 }
 
 func mapTransferErr(w http.ResponseWriter, err error, fallback string) bool {
@@ -152,8 +201,22 @@ func mapTransferErr(w http.ResponseWriter, err error, fallback string) bool {
 		respond.Error(w, http.StatusConflict, "status permintaan tidak sesuai")
 		return true
 	}
-	if errors.Is(err, ErrInsufficientStock) {
-		respond.Error(w, http.StatusConflict, "persediaan gudang tidak mencukupi")
+	var short *stockcheck.ShortageError
+	if errors.As(err, &short) {
+		respond.ErrorWithDetails(w, http.StatusConflict,
+			"persediaan gudang tidak mencukupi untuk beberapa item", "insufficient_stock", short.Lines)
+		return true
+	}
+	if errors.Is(err, ErrReasonRequired) {
+		respond.Error(w, http.StatusBadRequest, "alasan wajib diisi")
+		return true
+	}
+	if errors.Is(err, ErrReceiveNoteRequired) {
+		respond.Error(w, http.StatusBadRequest, "catatan wajib diisi untuk baris yang jumlah terimanya berbeda dari yang dikirim")
+		return true
+	}
+	if errors.Is(err, ErrNothingToTransfer) {
+		respond.Error(w, http.StatusBadRequest, "minimal satu baris harus dikirim dengan jumlah lebih dari 0")
 		return true
 	}
 	respond.Error(w, http.StatusInternalServerError, fallback)

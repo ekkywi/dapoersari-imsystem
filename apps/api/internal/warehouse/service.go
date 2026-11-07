@@ -8,7 +8,17 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrInvalidInput = errors.New("invalid input")
+var (
+	ErrInvalidInput = errors.New("invalid input")
+	ErrItemInactive = errors.New("item inactive")
+)
+
+// ItemInUseError blocks deactivating an item that is still referenced.
+type ItemInUseError struct {
+	Usages []ItemUsage
+}
+
+func (e *ItemInUseError) Error() string { return "item in use" }
 
 type Service struct {
 	repo *Repository
@@ -103,6 +113,15 @@ func (s *Service) PatchItem(ctx context.Context, id uuid.UUID, req PatchItemRequ
 	}
 	if sku == "" || name == "" || minStock < 0 {
 		return Item{}, ErrInvalidInput
+	}
+	if cur.IsActive && !active {
+		usages, err := s.repo.ItemUsages(ctx, id)
+		if err != nil {
+			return Item{}, err
+		}
+		if len(usages) > 0 {
+			return Item{}, &ItemInUseError{Usages: usages}
+		}
 	}
 	return s.repo.UpdateItem(ctx, Item{
 		ID:         id,
@@ -215,7 +234,7 @@ func (s *Service) CreateStockIn(ctx context.Context, createdBy uuid.UUID, req Cr
 		return StockInResult{}, err
 	}
 	if !item.IsActive {
-		return StockInResult{}, ErrInvalidInput
+		return StockInResult{}, ErrItemInactive
 	}
 
 	if req.SupplierID != nil {

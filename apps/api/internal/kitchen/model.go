@@ -31,8 +31,8 @@ type KitchenStock struct {
 }
 
 type CreateMenuRequest struct {
-	Name  string             `json:"name"`
-	Lines []RecipeLineInput  `json:"lines"`
+	Name  string            `json:"name"`
+	Lines []RecipeLineInput `json:"lines"`
 }
 
 type RecipeLineInput struct {
@@ -50,13 +50,15 @@ type PatchMenuRequest struct {
 }
 
 type MenuClosing struct {
-	ID          uuid.UUID             `json:"id"`
-	ClosingDate string                `json:"closing_date"`
-	Note        *string               `json:"note,omitempty"`
-	CreatedBy   uuid.UUID             `json:"created_by"`
-	CreatedAt   time.Time             `json:"created_at"`
-	Packages    []MenuClosingPackage  `json:"packages,omitempty"`
-	Lines       []MenuClosingLine     `json:"lines,omitempty"`
+	ID           uuid.UUID            `json:"id"`
+	ClosingDate  string               `json:"closing_date"`
+	Note         *string              `json:"note,omitempty"`
+	ShortageNote *string              `json:"shortage_note,omitempty"`
+	HasShortage  bool                 `json:"has_shortage"`
+	CreatedBy    uuid.UUID            `json:"created_by"`
+	CreatedAt    time.Time            `json:"created_at"`
+	Packages     []MenuClosingPackage `json:"packages,omitempty"`
+	Lines        []MenuClosingLine    `json:"lines,omitempty"`
 }
 
 type MenuClosingPackage struct {
@@ -75,12 +77,16 @@ type MenuClosingLine struct {
 	ItemName  string    `json:"item_name"`
 	UnitCode  string    `json:"unit_code"`
 	Qty       float64   `json:"qty"`
+	// ShortageQty is the part of Qty that could not be deducted (stock was short).
+	ShortageQty float64 `json:"shortage_qty"`
 }
 
 type CreateClosingRequest struct {
-	ClosingDate string               `json:"closing_date"`
-	Note        *string              `json:"note"`
-	Packages    []ClosingPackageInput `json:"packages"`
+	ClosingDate   string                `json:"closing_date"`
+	Note          *string               `json:"note"`
+	AllowShortage bool                  `json:"allow_shortage"`
+	ShortageNote  *string               `json:"shortage_note"`
+	Packages      []ClosingPackageInput `json:"packages"`
 }
 
 type ClosingPackageInput struct {

@@ -14,6 +14,7 @@ import {
 } from "@/lib/rbac";
 import { toastError, toastSuccess } from "@/lib/toast";
 import {
+  requestStatusBadge,
   requestStatusLabel,
   StockRequest,
   transferApi,
@@ -26,6 +27,7 @@ const ALL_STATUSES = [
   "transferred",
   "received",
   "rejected",
+  "cancelled",
 ] as const;
 
 function formatDateTime(iso: string): string {
@@ -270,7 +272,7 @@ function StockRequestsContent() {
                   <tr key={r.id}>
                     <td>{formatDateTime(r.created_at)}</td>
                     <td>
-                      <span className="badge badge-neutral">
+                      <span className={requestStatusBadge(r.status)}>
                         {requestStatusLabel(r.status)}
                       </span>
                     </td>

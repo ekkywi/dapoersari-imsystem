@@ -83,10 +83,11 @@ func (r *Repository) ListWarehouseLowStock(ctx context.Context) ([]LowStockAlert
 	return out, rows.Err()
 }
 
-// inTransitByItem: qty on transferred (not yet received) stock requests — heading to kitchen.
+// inTransitByItem: qty actually shipped on transferred (not yet received)
+// stock requests — heading to kitchen. Uses qty_transferred, not qty requested.
 func (r *Repository) inTransitByItem(ctx context.Context) (map[uuid.UUID]float64, error) {
 	const q = `
-		SELECT l.item_id, COALESCE(SUM(l.qty), 0)
+		SELECT l.item_id, COALESCE(SUM(l.qty_transferred), 0)
 		FROM stock_request_lines l
 		JOIN stock_requests r ON r.id = l.request_id
 		WHERE r.status = 'transferred'

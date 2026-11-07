@@ -42,13 +42,15 @@ func (r *Repository) CreateRequest(ctx context.Context, in NewRequestInput) (Sto
 		VALUES ('submitted', $1, $2)
 		RETURNING id, status::text, note, created_by, created_at,
 		          approved_by, approved_at, transferred_by, transferred_at,
-		          received_by, received_at, rejected_by, rejected_at, reject_reason
+		          received_by, received_at, rejected_by, rejected_at, reject_reason,
+		          cancelled_by, cancelled_at, cancel_reason
 	`
 	var req StockRequest
 	if err := tx.QueryRowContext(ctx, qReq, in.Note, in.CreatedBy).Scan(
 		&req.ID, &req.Status, &req.Note, &req.CreatedBy, &req.CreatedAt,
 		&req.ApprovedBy, &req.ApprovedAt, &req.TransferredBy, &req.TransferredAt,
 		&req.ReceivedBy, &req.ReceivedAt, &req.RejectedBy, &req.RejectedAt, &req.RejectReason,
+		&req.CancelledBy, &req.CancelledAt, &req.CancelReason,
 	); err != nil {
 		return StockRequest{}, fmt.Errorf("insert request: %w", err)
 	}
@@ -83,7 +85,8 @@ func (r *Repository) ListRequests(ctx context.Context) ([]StockRequest, error) {
 	const q = `
 		SELECT id, status::text, note, created_by, created_at,
 		       approved_by, approved_at, transferred_by, transferred_at,
-		       received_by, received_at, rejected_by, rejected_at, reject_reason
+		       received_by, received_at, rejected_by, rejected_at, reject_reason,
+		       cancelled_by, cancelled_at, cancel_reason
 		FROM stock_requests
 		ORDER BY created_at DESC
 	`
@@ -100,6 +103,7 @@ func (r *Repository) ListRequests(ctx context.Context) ([]StockRequest, error) {
 			&req.ID, &req.Status, &req.Note, &req.CreatedBy, &req.CreatedAt,
 			&req.ApprovedBy, &req.ApprovedAt, &req.TransferredBy, &req.TransferredAt,
 			&req.ReceivedBy, &req.ReceivedAt, &req.RejectedBy, &req.RejectedAt, &req.RejectReason,
+			&req.CancelledBy, &req.CancelledAt, &req.CancelReason,
 		); err != nil {
 			return nil, fmt.Errorf("scan request: %w", err)
 		}
@@ -112,7 +116,8 @@ func (r *Repository) GetRequest(ctx context.Context, id uuid.UUID) (StockRequest
 	const q = `
 		SELECT id, status::text, note, created_by, created_at,
 		       approved_by, approved_at, transferred_by, transferred_at,
-		       received_by, received_at, rejected_by, rejected_at, reject_reason
+		       received_by, received_at, rejected_by, rejected_at, reject_reason,
+		       cancelled_by, cancelled_at, cancel_reason
 		FROM stock_requests
 		WHERE id = $1
 		LIMIT 1
@@ -122,6 +127,7 @@ func (r *Repository) GetRequest(ctx context.Context, id uuid.UUID) (StockRequest
 		&req.ID, &req.Status, &req.Note, &req.CreatedBy, &req.CreatedAt,
 		&req.ApprovedBy, &req.ApprovedAt, &req.TransferredBy, &req.TransferredAt,
 		&req.ReceivedBy, &req.ReceivedAt, &req.RejectedBy, &req.RejectedAt, &req.RejectReason,
+		&req.CancelledBy, &req.CancelledAt, &req.CancelReason,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return StockRequest{}, ErrNotFound
@@ -169,7 +175,8 @@ func (r *Repository) listPackages(ctx context.Context, requestID uuid.UUID) ([]S
 
 func (r *Repository) listLines(ctx context.Context, requestID uuid.UUID) ([]StockRequestLine, error) {
 	const q = `
-		SELECT l.id, l.request_id, l.item_id, l.item_sku, l.item_name, l.unit_code, c.name, l.qty
+		SELECT l.id, l.request_id, l.item_id, l.item_sku, l.item_name, l.unit_code, c.name, l.qty,
+		       l.qty_transferred, l.qty_received, l.receive_note
 		FROM stock_request_lines l
 		LEFT JOIN items i ON i.id = l.item_id
 		LEFT JOIN categories c ON c.id = i.category_id
@@ -187,6 +194,7 @@ func (r *Repository) listLines(ctx context.Context, requestID uuid.UUID) ([]Stoc
 		var l StockRequestLine
 		if err := rows.Scan(
 			&l.ID, &l.RequestID, &l.ItemID, &l.ItemSKU, &l.ItemName, &l.UnitCode, &l.CategoryName, &l.Qty,
+			&l.QtyTransferred, &l.QtyReceived, &l.ReceiveNote,
 		); err != nil {
 			return nil, fmt.Errorf("scan line: %w", err)
 		}
@@ -195,7 +203,9 @@ func (r *Repository) listLines(ctx context.Context, requestID uuid.UUID) ([]Stoc
 	return out, rows.Err()
 }
 
-func (r *Repository) UpdateStatus(ctx context.Context, id uuid.UUID, fromStatus, toStatus string, actor uuid.UUID, rejectReason *string) error {
+// UpdateStatus is a compare-and-set: it only changes rows whose current status
+// is one of fromStatuses. reason is used for rejected/cancelled.
+func (r *Repository) UpdateStatus(ctx context.Context, id uuid.UUID, fromStatuses []string, toStatus string, actor uuid.UUID, reason *string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -209,30 +219,37 @@ func (r *Repository) UpdateStatus(ctx context.Context, id uuid.UUID, fromStatus,
 		q = `
 			UPDATE stock_requests
 			SET status = 'approved', approved_by = $2, approved_at = now()
-			WHERE id = $1 AND status = $3
+			WHERE id = $1 AND status::text = ANY($3::text[])
 		`
-		args = []any{id, actor, fromStatus}
+		args = []any{id, actor, fromStatuses}
 	case StatusRejected:
 		q = `
 			UPDATE stock_requests
 			SET status = 'rejected', rejected_by = $2, rejected_at = now(), reject_reason = $3
-			WHERE id = $1 AND status = $4
+			WHERE id = $1 AND status::text = ANY($4::text[])
 		`
-		args = []any{id, actor, rejectReason, fromStatus}
+		args = []any{id, actor, reason, fromStatuses}
+	case StatusCancelled:
+		q = `
+			UPDATE stock_requests
+			SET status = 'cancelled', cancelled_by = $2, cancelled_at = now(), cancel_reason = $3
+			WHERE id = $1 AND status::text = ANY($4::text[])
+		`
+		args = []any{id, actor, reason, fromStatuses}
 	case StatusTransferred:
 		q = `
 			UPDATE stock_requests
 			SET status = 'transferred', transferred_by = $2, transferred_at = now()
-			WHERE id = $1 AND status = $3
+			WHERE id = $1 AND status::text = ANY($3::text[])
 		`
-		args = []any{id, actor, fromStatus}
+		args = []any{id, actor, fromStatuses}
 	case StatusReceived:
 		q = `
 			UPDATE stock_requests
 			SET status = 'received', received_by = $2, received_at = now()
-			WHERE id = $1 AND status = $3
+			WHERE id = $1 AND status::text = ANY($3::text[])
 		`
-		args = []any{id, actor, fromStatus}
+		args = []any{id, actor, fromStatuses}
 	default:
 		return fmt.Errorf("unsupported status")
 	}
@@ -248,98 +265,5 @@ func (r *Repository) UpdateStatus(ctx context.Context, id uuid.UUID, fromStatus,
 	if n == 0 {
 		return ErrConflict
 	}
-	return tx.Commit()
-}
-
-// TransferStock decreases warehouse qty for each request line and writes history.
-func (r *Repository) TransferStock(ctx context.Context, req StockRequest, actor uuid.UUID) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	res, err := tx.ExecContext(ctx, `
-		UPDATE stock_requests
-		SET status = 'transferred', transferred_by = $2, transferred_at = now()
-		WHERE id = $1 AND status = 'approved'
-	`, req.ID, actor)
-	if err != nil {
-		return fmt.Errorf("mark transferred: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return ErrConflict
-	}
-
-	for _, line := range req.Lines {
-		var qtyAfter float64
-		err := tx.QueryRowContext(ctx, `
-			UPDATE warehouse_stocks
-			SET qty = qty - $2, updated_at = now()
-			WHERE item_id = $1 AND qty >= $2
-			RETURNING qty
-		`, line.ItemID, line.Qty).Scan(&qtyAfter)
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrInsufficientStock
-		}
-		if err != nil {
-			return fmt.Errorf("decrease warehouse: %w", err)
-		}
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO stock_history (
-				item_id, location, delta, qty_after, reason, ref_type, ref_id, created_by
-			) VALUES ($1, 'warehouse', $2, $3, 'transfer_out', 'stock_request', $4, $5)
-		`, line.ItemID, -line.Qty, qtyAfter, req.ID, actor); err != nil {
-			return fmt.Errorf("history transfer: %w", err)
-		}
-	}
-
-	return tx.Commit()
-}
-
-// ReceiveStock increases kitchen qty for each request line and writes history.
-func (r *Repository) ReceiveStock(ctx context.Context, req StockRequest, actor uuid.UUID) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	res, err := tx.ExecContext(ctx, `
-		UPDATE stock_requests
-		SET status = 'received', received_by = $2, received_at = now()
-		WHERE id = $1 AND status = 'transferred'
-	`, req.ID, actor)
-	if err != nil {
-		return fmt.Errorf("mark received: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return ErrConflict
-	}
-
-	for _, line := range req.Lines {
-		var qtyAfter float64
-		err := tx.QueryRowContext(ctx, `
-			INSERT INTO kitchen_stocks (item_id, qty, updated_at)
-			VALUES ($1, $2, now())
-			ON CONFLICT (item_id) DO UPDATE
-			SET qty = kitchen_stocks.qty + EXCLUDED.qty,
-			    updated_at = now()
-			RETURNING qty
-		`, line.ItemID, line.Qty).Scan(&qtyAfter)
-		if err != nil {
-			return fmt.Errorf("increase kitchen: %w", err)
-		}
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO stock_history (
-				item_id, location, delta, qty_after, reason, ref_type, ref_id, created_by
-			) VALUES ($1, 'kitchen', $2, $3, 'transfer_in', 'stock_request', $4, $5)
-		`, line.ItemID, line.Qty, qtyAfter, req.ID, actor); err != nil {
-			return fmt.Errorf("history receive: %w", err)
-		}
-	}
-
 	return tx.Commit()
 }

@@ -7,6 +7,7 @@ import (
 
 	"dapoersari-imsystem/apps/api/internal/auth"
 	"dapoersari-imsystem/apps/api/internal/httpapi/respond"
+	"dapoersari-imsystem/apps/api/internal/stockcheck"
 
 	"github.com/google/uuid"
 )
@@ -196,8 +197,14 @@ func mapKitchenErr(w http.ResponseWriter, err error, fallback string) bool {
 		respond.Error(w, http.StatusNotFound, "data tidak ditemukan")
 		return true
 	}
-	if errors.Is(err, ErrInsufficientStock) {
-		respond.Error(w, http.StatusConflict, "persediaan dapur tidak mencukupi")
+	var short *stockcheck.ShortageError
+	if errors.As(err, &short) {
+		respond.ErrorWithDetails(w, http.StatusConflict,
+			"persediaan dapur tidak mencukupi untuk beberapa bahan", "insufficient_stock", short.Lines)
+		return true
+	}
+	if errors.Is(err, ErrShortageNoteRequired) {
+		respond.Error(w, http.StatusBadRequest, "catatan kekurangan wajib diisi bila menyimpan dengan kekurangan")
 		return true
 	}
 	respond.Error(w, http.StatusInternalServerError, fallback)

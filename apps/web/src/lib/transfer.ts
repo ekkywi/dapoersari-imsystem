@@ -17,6 +17,9 @@ export type StockRequestLine = {
   unit_code: string;
   category_name?: string | null;
   qty: number;
+  qty_transferred?: number | null;
+  qty_received?: number | null;
+  receive_note?: string | null;
 };
 
 export type StockRequest = {
@@ -34,6 +37,9 @@ export type StockRequest = {
   rejected_by?: string | null;
   rejected_at?: string | null;
   reject_reason?: string | null;
+  cancelled_by?: string | null;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
   packages?: StockRequestPackage[];
   lines?: StockRequestLine[];
 };
@@ -50,6 +56,8 @@ export function requestStatusLabel(status: string): string {
       return "Diterima";
     case "rejected":
       return "Ditolak";
+    case "cancelled":
+      return "Dibatalkan";
     default:
       return status;
   }
@@ -63,12 +71,36 @@ export const transferApi = {
     packages?: { menu_id: string; qty_paket: number }[];
     extra_items?: { item_id: string; qty: number }[];
   }) => apiPost<StockRequest>("/api/v1/stock-requests", body),
-  approve: (id: string) =>
-    apiPost<StockRequest>(`/api/v1/stock-requests/${id}/approve`, {}),
+  approve: (id: string, allowShortage = false) =>
+    apiPost<StockRequest>(`/api/v1/stock-requests/${id}/approve`, {
+      allow_shortage: allowShortage,
+    }),
   reject: (id: string, reason: string) =>
     apiPost<StockRequest>(`/api/v1/stock-requests/${id}/reject`, { reason }),
-  transfer: (id: string) =>
-    apiPost<StockRequest>(`/api/v1/stock-requests/${id}/transfer`, {}),
-  receive: (id: string) =>
-    apiPost<StockRequest>(`/api/v1/stock-requests/${id}/receive`, {}),
+  cancel: (id: string, reason: string) =>
+    apiPost<StockRequest>(`/api/v1/stock-requests/${id}/cancel`, { reason }),
+  transfer: (id: string, lines?: { line_id: string; qty: number }[]) =>
+    apiPost<StockRequest>(`/api/v1/stock-requests/${id}/transfer`, lines ? { lines } : {}),
+  receive: (
+    id: string,
+    lines?: { line_id: string; qty_received: number; note?: string | null }[],
+  ) =>
+    apiPost<StockRequest>(`/api/v1/stock-requests/${id}/receive`, lines ? { lines } : {}),
 };
+
+/** Badge class per status (list + detail). */
+export function requestStatusBadge(status: string): string {
+  switch (status) {
+    case "received":
+      return "badge badge-success";
+    case "rejected":
+    case "cancelled":
+      return "badge badge-danger";
+    case "submitted":
+    case "approved":
+    case "transferred":
+      return "badge badge-warn";
+    default:
+      return "badge badge-neutral";
+  }
+}

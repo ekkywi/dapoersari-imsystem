@@ -44,6 +44,8 @@ type CreateOpnameRequest struct {
 	Location string             `json:"location"`
 	Note     *string            `json:"note"`
 	Lines    []OpnameLineInput  `json:"lines"`
+	// AcknowledgeNoClosing lets a kitchen draft be created before today's closing.
+	AcknowledgeNoClosing bool `json:"acknowledge_no_closing"`
 }
 
 type OpnameLineInput struct {

@@ -9,7 +9,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrInvalidInput = errors.New("invalid input")
+var (
+	ErrInvalidInput         = errors.New("invalid input")
+	ErrShortageNoteRequired = errors.New("shortage note required")
+)
 
 type Service struct {
 	repo *Repository
@@ -109,8 +112,10 @@ type MenuPackageQty struct {
 	QtyPaket float64
 }
 
-// ExpandMenus merges recipe lines for package quantities (used by transfer service).
-func (s *Service) ExpandMenus(ctx context.Context, packages []MenuPackageQty) (map[uuid.UUID]float64, map[uuid.UUID]ItemMeta, error) {
+// ExpandMenus merges recipe lines for package quantities. requireActive rejects
+// inactive menus (stock requests); closings pass false so usage of a menu that
+// was just deactivated can still be recorded.
+func (s *Service) ExpandMenus(ctx context.Context, packages []MenuPackageQty, requireActive bool) (map[uuid.UUID]float64, map[uuid.UUID]ItemMeta, error) {
 	qtyByItem := map[uuid.UUID]float64{}
 	metaByItem := map[uuid.UUID]ItemMeta{}
 	for _, p := range packages {
@@ -118,7 +123,7 @@ func (s *Service) ExpandMenus(ctx context.Context, packages []MenuPackageQty) (m
 		if err != nil {
 			return nil, nil, err
 		}
-		if !menu.IsActive || len(menu.Lines) == 0 {
+		if (requireActive && !menu.IsActive) || len(menu.Lines) == 0 {
 			return nil, nil, ErrInvalidInput
 		}
 		for _, line := range menu.Lines {
@@ -178,7 +183,7 @@ func (s *Service) CreateClosing(ctx context.Context, createdBy uuid.UUID, req Cr
 		ins = append(ins, MenuPackageQty{MenuID: p.MenuID, QtyPaket: p.QtyPaket})
 	}
 
-	expanded, metas, err := s.ExpandMenus(ctx, ins)
+	expanded, metas, err := s.ExpandMenus(ctx, ins, false)
 	if err != nil {
 		return MenuClosing{}, err
 	}
@@ -217,11 +222,22 @@ func (s *Service) CreateClosing(ctx context.Context, createdBy uuid.UUID, req Cr
 		}
 	}
 
+	var shortageNote *string
+	if req.AllowShortage {
+		if req.ShortageNote == nil || strings.TrimSpace(*req.ShortageNote) == "" {
+			return MenuClosing{}, ErrShortageNoteRequired
+		}
+		t := strings.TrimSpace(*req.ShortageNote)
+		shortageNote = &t
+	}
+
 	return s.repo.CreateClosingAndConsume(ctx, NewClosingInput{
-		ClosingDate: closingDate,
-		Note:        note,
-		CreatedBy:   createdBy,
-		Packages:    packages,
-		Lines:       lines,
+		ClosingDate:   closingDate,
+		Note:          note,
+		AllowShortage: req.AllowShortage,
+		ShortageNote:  shortageNote,
+		CreatedBy:     createdBy,
+		Packages:      packages,
+		Lines:         lines,
 	})
 }

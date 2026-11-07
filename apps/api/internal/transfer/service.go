@@ -10,7 +10,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrInvalidInput = errors.New("invalid input")
+var (
+	ErrInvalidInput   = errors.New("invalid input")
+	ErrReasonRequired = errors.New("reason required")
+)
 
 type Service struct {
 	repo    *Repository
@@ -52,7 +55,7 @@ func (s *Service) Create(ctx context.Context, createdBy uuid.UUID, req CreateSto
 			}
 			ins = append(ins, kitchen.MenuPackageQty{MenuID: p.MenuID, QtyPaket: p.QtyPaket})
 		}
-		expanded, metas, err := s.kitchen.ExpandMenus(ctx, ins)
+		expanded, metas, err := s.kitchen.ExpandMenus(ctx, ins, true)
 		if err != nil {
 			if errors.Is(err, kitchen.ErrNotFound) {
 				return StockRequest{}, ErrNotFound
@@ -131,25 +134,45 @@ func (s *Service) Create(ctx context.Context, createdBy uuid.UUID, req CreateSto
 	})
 }
 
-func (s *Service) Approve(ctx context.Context, id, actor uuid.UUID) (StockRequest, error) {
-	if err := s.repo.UpdateStatus(ctx, id, StatusSubmitted, StatusApproved, actor, nil); err != nil {
+func (s *Service) Approve(ctx context.Context, id, actor uuid.UUID, body ApproveRequestRequest) (StockRequest, error) {
+	req, err := s.repo.GetRequest(ctx, id)
+	if err != nil {
+		return StockRequest{}, err
+	}
+	if req.Status != StatusSubmitted {
+		return StockRequest{}, ErrConflict
+	}
+	if err := s.repo.ApproveRequest(ctx, req, actor, body.AllowShortage); err != nil {
 		return StockRequest{}, err
 	}
 	return s.repo.GetRequest(ctx, id)
 }
 
+// Reject is allowed from submitted and approved (nothing has moved yet).
 func (s *Service) Reject(ctx context.Context, id, actor uuid.UUID, reason string) (StockRequest, error) {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
-		return StockRequest{}, ErrInvalidInput
+		return StockRequest{}, ErrReasonRequired
 	}
-	if err := s.repo.UpdateStatus(ctx, id, StatusSubmitted, StatusRejected, actor, &reason); err != nil {
+	if err := s.repo.UpdateStatus(ctx, id, []string{StatusSubmitted, StatusApproved}, StatusRejected, actor, &reason); err != nil {
 		return StockRequest{}, err
 	}
 	return s.repo.GetRequest(ctx, id)
 }
 
-func (s *Service) Transfer(ctx context.Context, id, actor uuid.UUID) (StockRequest, error) {
+// Cancel lets the kitchen withdraw a request before anything is shipped.
+func (s *Service) Cancel(ctx context.Context, id, actor uuid.UUID, reason string) (StockRequest, error) {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return StockRequest{}, ErrReasonRequired
+	}
+	if err := s.repo.UpdateStatus(ctx, id, []string{StatusSubmitted, StatusApproved}, StatusCancelled, actor, &reason); err != nil {
+		return StockRequest{}, err
+	}
+	return s.repo.GetRequest(ctx, id)
+}
+
+func (s *Service) Transfer(ctx context.Context, id, actor uuid.UUID, body TransferRequestRequest) (StockRequest, error) {
 	req, err := s.repo.GetRequest(ctx, id)
 	if err != nil {
 		return StockRequest{}, err
@@ -157,13 +180,13 @@ func (s *Service) Transfer(ctx context.Context, id, actor uuid.UUID) (StockReque
 	if req.Status != StatusApproved {
 		return StockRequest{}, ErrConflict
 	}
-	if err := s.repo.TransferStock(ctx, req, actor); err != nil {
+	if err := s.repo.TransferStock(ctx, req, actor, body.Lines, body.AllowShortage); err != nil {
 		return StockRequest{}, err
 	}
 	return s.repo.GetRequest(ctx, id)
 }
 
-func (s *Service) Receive(ctx context.Context, id, actor uuid.UUID) (StockRequest, error) {
+func (s *Service) Receive(ctx context.Context, id, actor uuid.UUID, body ReceiveRequestRequest) (StockRequest, error) {
 	req, err := s.repo.GetRequest(ctx, id)
 	if err != nil {
 		return StockRequest{}, err
@@ -171,7 +194,7 @@ func (s *Service) Receive(ctx context.Context, id, actor uuid.UUID) (StockReques
 	if req.Status != StatusTransferred {
 		return StockRequest{}, ErrConflict
 	}
-	if err := s.repo.ReceiveStock(ctx, req, actor); err != nil {
+	if err := s.repo.ReceiveStock(ctx, req, actor, body.Lines); err != nil {
 		return StockRequest{}, err
 	}
 	return s.repo.GetRequest(ctx, id)

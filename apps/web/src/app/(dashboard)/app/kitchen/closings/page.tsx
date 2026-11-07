@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ShortageList } from "@/components/features/ShortageList";
 import { Drawer } from "@/components/ui/Drawer";
+import { ShortageDetail, shortageDetails } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { kitchenApi, Menu, MenuClosing } from "@/lib/kitchen";
 import { canMutateKitchen } from "@/lib/rbac";
@@ -37,6 +39,9 @@ export default function ClosingsPage() {
     { menu_id: "", qty_paket: "1" },
   ]);
   const [detail, setDetail] = useState<MenuClosing | null>(null);
+  const [shortages, setShortages] = useState<ShortageDetail[] | null>(null);
+  const [allowShortage, setAllowShortage] = useState(false);
+  const [shortageNote, setShortageNote] = useState("");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -56,7 +61,11 @@ export default function ClosingsPage() {
         kitchenApi.listMenus(),
       ]);
       setRows(closings);
-      setMenus(menuRows.filter((m) => m.is_active));
+      // Inactive menus stay selectable so usage of a just-deactivated menu can
+      // still be recorded; active ones first.
+      setMenus(
+        [...menuRows].sort((a, b) => Number(b.is_active) - Number(a.is_active)),
+      );
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Gagal memuat penutupan");
     } finally {
@@ -73,8 +82,11 @@ export default function ClosingsPage() {
   function openCreate() {
     setClosingDate(todayISO());
     setNote("");
-    setPackages([{ menu_id: menus[0]?.id ?? "", qty_paket: "1" }]);
+    setPackages([{ menu_id: menus.find((m) => m.is_active)?.id ?? "", qty_paket: "1" }]);
     setFormError(null);
+    setShortages(null);
+    setAllowShortage(false);
+    setShortageNote("");
     setDrawerOpen(true);
   }
 
@@ -99,18 +111,31 @@ export default function ClosingsPage() {
       setFormError("Tanggal dan minimal satu paket menu wajib diisi");
       return;
     }
+    if (allowShortage && !shortageNote.trim()) {
+      setFormError("Catatan kekurangan wajib diisi");
+      return;
+    }
     setSaving(true);
     setFormError(null);
     try {
-      await kitchenApi.createClosing({
+      const saved = await kitchenApi.createClosing({
         closing_date: closingDate,
         note: note.trim() || null,
         packages: pkgs,
+        ...(allowShortage
+          ? { allow_shortage: true, shortage_note: shortageNote.trim() }
+          : {}),
       });
       setDrawerOpen(false);
-      toastSuccess("Akhir shift tersimpan; persediaan dapur dikurangi");
+      toastSuccess(
+        saved.has_shortage
+          ? "Akhir shift tersimpan dengan kekurangan; stok dikurangi sebesar yang tersedia"
+          : "Akhir shift tersimpan; persediaan dapur dikurangi",
+      );
       await load();
     } catch (err) {
+      const short = shortageDetails(err);
+      setShortages(short);
       setFormError(err instanceof Error ? err.message : "Gagal menyimpan");
     } finally {
       setSaving(false);
@@ -176,7 +201,12 @@ export default function ClosingsPage() {
               <tbody>
                 {filtered.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.closing_date}</td>
+                    <td>
+                      {r.closing_date}{" "}
+                      {r.has_shortage ? (
+                        <span className="badge badge-warn">Ada kekurangan</span>
+                      ) : null}
+                    </td>
                     <td>{formatDateTime(r.created_at)}</td>
                     <td>{r.note || "—"}</td>
                     <td>
@@ -203,6 +233,7 @@ export default function ClosingsPage() {
         onClose={() => setDrawerOpen(false)}
       >
         {formError ? <p className="error">{formError}</p> : null}
+        {shortages && shortages.length > 0 ? <ShortageList items={shortages} /> : null}
         <form className="form" onSubmit={onSubmit}>
           <div className="field">
             <label className="label">Tanggal</label>
@@ -230,6 +261,7 @@ export default function ClosingsPage() {
                 {menus.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
+                    {m.is_active ? "" : " (nonaktif)"}
                   </option>
                 ))}
               </select>
@@ -254,7 +286,7 @@ export default function ClosingsPage() {
             onClick={() =>
               setPackages((prev) => [
                 ...prev,
-                { menu_id: menus[0]?.id ?? "", qty_paket: "1" },
+                { menu_id: menus.find((m) => m.is_active)?.id ?? "", qty_paket: "1" },
               ])
             }
           >
@@ -268,6 +300,28 @@ export default function ClosingsPage() {
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
+          {shortages && shortages.length > 0 ? (
+            <div className="field">
+              <label className="label">
+                <input
+                  type="checkbox"
+                  checked={allowShortage}
+                  onChange={(e) => setAllowShortage(e.target.checked)}
+                />{" "}
+                Simpan dengan kekurangan (stok dikurangi sebesar yang tersedia)
+              </label>
+              {allowShortage ? (
+                <input
+                  className="input"
+                  style={{ marginTop: "0.5rem" }}
+                  placeholder="Catatan kekurangan (wajib), mis. stok sistem kurang dari fisik"
+                  value={shortageNote}
+                  onChange={(e) => setShortageNote(e.target.value)}
+                  required
+                />
+              ) : null}
+            </div>
+          ) : null}
           <div className="drawer-footer">
             <button
               type="button"
@@ -277,7 +331,11 @@ export default function ClosingsPage() {
               Batal
             </button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Menyimpan…" : "Simpan & kurangi persediaan"}
+              {saving
+                ? "Menyimpan…"
+                : allowShortage
+                  ? "Simpan dengan kekurangan"
+                  : "Simpan & kurangi persediaan"}
             </button>
           </div>
         </form>
@@ -296,6 +354,12 @@ export default function ClosingsPage() {
         {detail ? (
           <>
             <p className="muted">{detail.note || "Tanpa catatan"}</p>
+            {detail.has_shortage ? (
+              <p className="error">
+                <span className="badge badge-warn">Ada kekurangan</span>{" "}
+                {detail.shortage_note}
+              </p>
+            ) : null}
             <h2 className="panel-title">Paket</h2>
             <ul>
               {(detail.packages ?? []).map((p) => (
@@ -309,6 +373,15 @@ export default function ClosingsPage() {
               {(detail.lines ?? []).map((l) => (
                 <li key={l.id}>
                   {l.item_sku} — {l.item_name}: {l.qty} {l.unit_code}
+                  {l.shortage_qty > 0 ? (
+                    <>
+                      {" "}
+                      <span className="badge badge-warn">
+                        kurang {l.shortage_qty} {l.unit_code} (dikurangi{" "}
+                        {Math.round((l.qty - l.shortage_qty) * 1000) / 1000})
+                      </span>
+                    </>
+                  ) : null}
                 </li>
               ))}
             </ul>
