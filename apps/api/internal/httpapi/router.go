@@ -65,8 +65,9 @@ func NewRouter(
 		)
 	}
 
-	// Auth
-	mux.HandleFunc("POST /api/v1/auth/login", authHandler.Login)
+	// Auth — login rate-limited (IP + email, in-memory)
+	loginLimit := middleware.LoginRateLimit(middleware.NewLoginRateLimiter())
+	mux.Handle("POST /api/v1/auth/login", loginLimit(http.HandlerFunc(authHandler.Login)))
 	mux.Handle("GET /api/v1/auth/me", authOnly(authHandler.Me))
 
 	// Admin — Super Admin only (soft deactivate; no hard delete)

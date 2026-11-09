@@ -4,16 +4,18 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 )
 
 // Config holds process configuration loaded from the environment.
 type Config struct {
-	AppEnv       string
-	Port         string
-	DatabaseURL  string
-	JWTSecret    string
-	CORSOrigin   string
-	LeadTimeDays int
+	AppEnv            string
+	Port              string
+	DatabaseURL       string
+	JWTSecret         string
+	JWTTTL            time.Duration
+	CORSOrigin        string
+	LeadTimeDays      int
 	OrderIntervalDays int
 }
 
@@ -25,6 +27,7 @@ func Load() (Config, error) {
 		Port:              getEnv("PORT", "8080"),
 		DatabaseURL:       os.Getenv("DATABASE_URL"),
 		JWTSecret:         os.Getenv("JWT_SECRET"),
+		JWTTTL:            getEnvDuration("JWT_TTL", 24*time.Hour),
 		CORSOrigin:        getEnv("CORS_ORIGIN", "http://localhost:3000"),
 		LeadTimeDays:      getEnvInt("LEAD_TIME_DAYS", 1),
 		OrderIntervalDays: getEnvInt("ORDER_INTERVAL_DAYS", 1),
@@ -62,4 +65,16 @@ func getEnvInt(key string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+func getEnvDuration(key string, fallback time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		return fallback
+	}
+	return d
 }

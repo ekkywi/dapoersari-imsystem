@@ -36,7 +36,7 @@ func main() {
 	log.Printf("database: connected")
 
 	authRepo := auth.NewRepository(db)
-	authSvc := auth.NewService(authRepo, cfg.JWTSecret)
+	authSvc := auth.NewService(authRepo, cfg.JWTSecret, cfg.JWTTTL)
 	authHandler := auth.NewHandler(authSvc)
 
 	warehouseRepo := warehouse.NewRepository(db)
@@ -87,7 +87,7 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	log.Printf("api listening on %s (env=%s cors=%s)", addr, cfg.AppEnv, cfg.CORSOrigin)
+	log.Printf("api listening on %s (env=%s cors=%s jwt_ttl=%s)", addr, cfg.AppEnv, cfg.CORSOrigin, cfg.JWTTTL)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("server: %v", err)
 	}

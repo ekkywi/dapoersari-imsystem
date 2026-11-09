@@ -26,11 +26,14 @@ type Service struct {
 	tokenTTL  time.Duration
 }
 
-func NewService(repo *Repository, jwtSecret string) *Service {
+func NewService(repo *Repository, jwtSecret string, tokenTTL time.Duration) *Service {
+	if tokenTTL <= 0 {
+		tokenTTL = 24 * time.Hour
+	}
 	return &Service{
 		repo:      repo,
 		jwtSecret: []byte(jwtSecret),
-		tokenTTL:  24 * time.Hour,
+		tokenTTL:  tokenTTL,
 	}
 }
 

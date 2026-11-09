@@ -1,9 +1,20 @@
-import { getToken } from "@/lib/auth";
+import { clearSession, getToken } from "@/lib/auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export function getApiUrl(): string {
   return API_URL.replace(/\/$/, "");
+}
+
+function handleUnauthorized(status: number, path: string): void {
+  if (status !== 401) return;
+  if (typeof window === "undefined") return;
+  // Login itself may return 401 for bad password — do not clear/redirect there.
+  if (path.includes("/auth/login")) return;
+  clearSession();
+  if (!window.location.pathname.startsWith("/login")) {
+    window.location.replace("/login");
+  }
 }
 
 type ApiEnvelope<T> = {
@@ -46,7 +57,7 @@ export function shortageDetails(err: unknown): ShortageDetail[] | null {
   return null;
 }
 
-async function parseEnvelope<T>(res: Response): Promise<T> {
+async function parseEnvelope<T>(res: Response, path: string): Promise<T> {
   let body: ApiEnvelope<T> = {};
   try {
     body = (await res.json()) as ApiEnvelope<T>;
@@ -54,6 +65,7 @@ async function parseEnvelope<T>(res: Response): Promise<T> {
     // non-JSON body; fall through with status only
   }
   if (!res.ok || body.error) {
+    handleUnauthorized(res.status, path);
     throw new ApiError(body.error ?? `API ${res.status}`, res.status, body.code, body.details);
   }
   return body.data as T;
@@ -70,7 +82,7 @@ export async function apiGet<T>(path: string, init?: RequestInit): Promise<T> {
     },
     cache: "no-store",
   });
-  return parseEnvelope<T>(res);
+  return parseEnvelope<T>(res, path);
 }
 
 export async function apiPost<T>(
@@ -91,7 +103,7 @@ export async function apiPost<T>(
     body: JSON.stringify(payload),
     cache: "no-store",
   });
-  return parseEnvelope<T>(res);
+  return parseEnvelope<T>(res, path);
 }
 
 export async function apiPut<T>(
@@ -112,7 +124,7 @@ export async function apiPut<T>(
     body: JSON.stringify(payload),
     cache: "no-store",
   });
-  return parseEnvelope<T>(res);
+  return parseEnvelope<T>(res, path);
 }
 
 export async function apiPatch<T>(
@@ -133,5 +145,5 @@ export async function apiPatch<T>(
     body: JSON.stringify(payload),
     cache: "no-store",
   });
-  return parseEnvelope<T>(res);
+  return parseEnvelope<T>(res, path);
 }

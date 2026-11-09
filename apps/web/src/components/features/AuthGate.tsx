@@ -14,6 +14,10 @@ import {
   type NavKey,
 } from "@/lib/rbac";
 
+/** Logout after this much idle time (no pointer/keyboard activity). */
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const IDLE_CHECK_MS = 30 * 1000;
+
 const PATH_TO_NAV: { prefix: string; key: NavKey }[] = [
   { prefix: "/app/warehouse/units", key: "units" },
   { prefix: "/app/warehouse/categories", key: "categories" },
@@ -70,6 +74,40 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       router.replace("/app");
     }
   }, [ready, user, pathname, router]);
+
+  useEffect(() => {
+    if (!ready || !user) return;
+
+    let lastActivity = Date.now();
+    const bump = () => {
+      lastActivity = Date.now();
+    };
+
+    const events: (keyof WindowEventMap)[] = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "touchstart",
+      "scroll",
+    ];
+    for (const ev of events) {
+      window.addEventListener(ev, bump, { passive: true });
+    }
+
+    const timer = window.setInterval(() => {
+      if (Date.now() - lastActivity >= IDLE_TIMEOUT_MS) {
+        clearSession();
+        router.replace("/login");
+      }
+    }, IDLE_CHECK_MS);
+
+    return () => {
+      for (const ev of events) {
+        window.removeEventListener(ev, bump);
+      }
+      window.clearInterval(timer);
+    };
+  }, [ready, user, router]);
 
   function logout() {
     clearSession();

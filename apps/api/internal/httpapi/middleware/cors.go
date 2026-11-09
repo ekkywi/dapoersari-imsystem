@@ -44,6 +44,13 @@ func Auth(svc *auth.Service) func(http.Handler) http.Handler {
 				return
 			}
 
+			user, err := svc.Me(r.Context(), userID)
+			if err != nil || !user.IsActive {
+				respond.Error(w, http.StatusUnauthorized, "invalid token")
+				return
+			}
+			role = user.Role
+
 			ctx := auth.ContextWithUser(r.Context(), userID, role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

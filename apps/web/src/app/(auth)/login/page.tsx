@@ -24,6 +24,13 @@ function pesanLogin(raw: string): string {
   if (key.includes("tidak aktif") || key.includes("inactive")) {
     return "Akun tidak aktif";
   }
+  if (
+    key.includes("terlalu banyak") ||
+    key.includes("too many") ||
+    key.includes("rate")
+  ) {
+    return "Terlalu banyak percobaan masuk; coba lagi nanti";
+  }
   if (key.includes("failed to fetch") || key.includes("network")) {
     return "Tidak dapat menghubungi layanan";
   }
