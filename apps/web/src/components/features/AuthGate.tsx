@@ -135,7 +135,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           </div>
           <div className="shell-topbar-actions">
             <ThemeToggle />
-            <button type="button" className="btn btn-ghost" onClick={logout}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={logout}
+            >
               Keluar
             </button>
           </div>

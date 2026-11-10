@@ -8,8 +8,8 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Dapoer Sari — Sistem manajemen inventaris",
-  description: "Sistem manajemen inventaris gudang dan dapur",
+  title: "Dapoer Sari — Inventaris rumah makan",
+  description: "Catat stok gudang dan dapur: penerimaan, transfer, shift, dan opname",
 };
 
 const themeInitScript = `(function(){try{var k='ds_theme';var s=localStorage.getItem(k);var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;}catch(e){}})();`;

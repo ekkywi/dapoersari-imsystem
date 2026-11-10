@@ -50,6 +50,20 @@ export function LiveClock({ className = "" }: { className?: string }) {
   );
 }
 
+/** Tanggal hidup untuk metrik ringkasan landing. */
+export function LiveDate({ className = "" }: { className?: string }) {
+  const now = useNow();
+
+  return (
+    <p
+      className={`stat-value entry-clock-date ${className}`.trim()}
+      suppressHydrationWarning
+    >
+      {now ? formatTanggal(now) : "—"}
+    </p>
+  );
+}
+
 /** Jam hidup untuk kartu ringkasan. */
 export function LiveTime({ className = "" }: { className?: string }) {
   const now = useNow();

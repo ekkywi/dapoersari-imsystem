@@ -272,7 +272,7 @@ export default function AdminUsersPage() {
                       <td>{roleLabel(u.role)}</td>
                       <td>{u.is_active ? "Aktif" : "Nonaktif"}</td>
                       <td>
-                        <div className="si-toolbar-actions" style={{ gap: "0.35rem" }}>
+                        <div className="si-toolbar-actions si-row-actions">
                           <button
                             type="button"
                             className="btn btn-ghost"

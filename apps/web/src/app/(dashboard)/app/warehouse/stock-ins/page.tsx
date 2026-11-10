@@ -357,7 +357,7 @@ export default function StockInsPage() {
                 autoFocus
               />
               {selectedUnitCode ? (
-                <p className="muted" style={{ marginTop: "0.25rem" }}>
+                <p className="field-hint">
                   Satuan mengikuti item: {selectedUnitCode}
                 </p>
               ) : null}

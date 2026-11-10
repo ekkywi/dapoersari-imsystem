@@ -43,7 +43,9 @@ export default function DashboardPage() {
         <div className="page-header-text">
           <p className="section-label">Operasional</p>
           <h1 className="page-title">Ringkasan</h1>
-          <p className="lede">Status persediaan dan antrian dokumen.</p>
+          <p className="lede">
+            Status persediaan gudang, dapur, dan antrian dokumen.
+          </p>
         </div>
         <div className="page-header-actions">
           <button type="button" className="btn btn-ghost" onClick={() => void load()}>
@@ -61,7 +63,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          <div className="badge-row badge-row-spaced" style={{ marginBottom: "1rem" }}>
+          <div className="badge-row">
             {totalLow === 0 ? (
               <span className="badge badge-success">Persediaan dalam ambang</span>
             ) : (
@@ -126,7 +128,7 @@ export default function DashboardPage() {
             </article>
           </div>
 
-          <p className="muted" style={{ marginTop: "1rem", fontSize: "0.875rem" }}>
+          <p className="si-footnote">
             *Dapur: persediaan tersedia + dalam perjalanan. Lead{" "}
             {summary.lead_time_days} hari · interval {summary.order_interval_days}{" "}
             hari.

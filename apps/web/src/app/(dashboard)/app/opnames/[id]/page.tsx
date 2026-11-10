@@ -179,7 +179,7 @@ function OpnameDetailContent() {
             {summary.total} baris
           </p>
         </div>
-        <div className="si-filter-row" style={{ marginBottom: 0 }}>
+        <div className="si-filter-row">
           <button
             type="button"
             className={

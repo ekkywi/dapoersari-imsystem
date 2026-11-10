@@ -77,20 +77,34 @@ export default function LoginPage() {
 
   return (
     <main className="login-screen">
-      <div className="login-theme">
-        <ThemeToggle />
-      </div>
-      <div className="login-panel">
-        <div className="login-brand-block">
-          <p className="login-kicker">Sistem inventaris</p>
+      <aside className="login-brand-panel" aria-hidden={false}>
+        <div className="login-brand-media" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="login-brand-photo"
+            src="/hero-kitchen.png"
+            alt=""
+          />
+          <div className="login-brand-scrim" />
+        </div>
+        <div className="login-brand-copy">
           <h1 className="login-brand">Dapoer Sari</h1>
           <hr className="login-brand-rule" />
-          <p className="login-lede">Sistem manajemen inventaris</p>
+          <p className="login-lede">Catat stok gudang dan dapur.</p>
+        </div>
+      </aside>
+
+      <section className="login-form-panel">
+        <div className="login-form-top">
+          <p className="login-kicker">Inventaris rumah makan</p>
+          <ThemeToggle />
         </div>
 
-        <div className="login-card">
-          <p className="login-card-title">Akses</p>
-          <p className="login-card-desc">Masuk dengan akun staf Anda.</p>
+        <div className="login-form-wrap">
+          <header className="login-form-head">
+            <h2 className="login-form-title">Masuk</h2>
+            <p className="login-card-desc">Masuk dengan akun staf Anda.</p>
+          </header>
 
           <form className="form" onSubmit={onSubmit}>
             <label className="field">
@@ -136,7 +150,7 @@ export default function LoginPage() {
         <p className="login-back">
           <Link href="/">Kembali ke beranda</Link>
         </p>
-      </div>
+      </section>
     </main>
   );
 }

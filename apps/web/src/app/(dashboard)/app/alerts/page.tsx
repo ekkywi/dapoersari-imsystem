@@ -56,9 +56,7 @@ function AlertsContent() {
         <div className="page-header-text">
           <p className="section-label">Operasional</p>
           <h1 className="page-title">Peringatan Persediaan</h1>
-          <p className="lede">
-            Item di bawah atau sama dengan persediaan minimum.
-          </p>
+          <p className="lede">Item di bawah min stok (gudang &amp; dapur).</p>
         </div>
         <div className="page-header-actions">
           <Link className="btn btn-ghost" href="/app">

@@ -266,8 +266,7 @@ export default function ClosingsPage() {
                 ))}
               </select>
               <input
-                className="input"
-                style={{ marginTop: "0.5rem" }}
+                className="input field-control"
                 type="number"
                 min={0.001}
                 step="0.001"
@@ -312,8 +311,7 @@ export default function ClosingsPage() {
               </label>
               {allowShortage ? (
                 <input
-                  className="input"
-                  style={{ marginTop: "0.5rem" }}
+                  className="input field-control"
                   placeholder="Catatan kekurangan (wajib), mis. stok sistem kurang dari fisik"
                   value={shortageNote}
                   onChange={(e) => setShortageNote(e.target.value)}
