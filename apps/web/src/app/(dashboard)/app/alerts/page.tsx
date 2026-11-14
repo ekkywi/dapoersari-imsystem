@@ -184,7 +184,7 @@ function AlertsContent() {
           </div>
         ) : (
           <div className="ds-table-wrap">
-            <table className="ds-table is-cozy">
+            <table className="ds-table is-cozy is-stack">
               <thead>
                 <tr>
                   <th>Item</th>
@@ -204,21 +204,21 @@ function AlertsContent() {
                   const loc = toLocation(r.location);
                   return (
                     <tr key={`${r.location}-${r.item_id}`}>
-                      <td>
+                      <td data-title>
                         <div className="ds-cell-stack">
                           <span className="ds-cell-name">{r.name}</span>
                           <span className="ds-cell-sub ds-num">{r.sku}</span>
                         </div>
                       </td>
-                      <td className="ds-nowrap">
+                      <td data-label="Lokasi" className="ds-nowrap">
                         <LocationTag location={loc} size="sm" />
                       </td>
-                      <td className="ds-ink-2 ds-text-sm">{r.category_name || "—"}</td>
-                      <td className="is-num ds-strong-cell">
+                      <td data-label="Kategori" className="ds-ink-2 ds-text-sm">{r.category_name || "—"}</td>
+                      <td data-label="Stok" className="is-num ds-strong-cell">
                         <Qty value={r.qty} unit={r.unit_code} />
                       </td>
                       {showTransit ? (
-                        <td className="is-num ds-nowrap">
+                        <td data-label="Di jalan" className="is-num ds-nowrap">
                           {r.in_transit > 0 ? (
                             <Qty value={r.in_transit} unit={r.unit_code} tone="warn" />
                           ) : (
@@ -226,7 +226,7 @@ function AlertsContent() {
                           )}
                         </td>
                       ) : null}
-                      <td>
+                      <td data-label="Terhadap minimum">
                         <MinGauge
                           layout="stacked"
                           effective={r.effective_qty}
@@ -234,14 +234,14 @@ function AlertsContent() {
                           unit={r.unit_code}
                         />
                       </td>
-                      <td className="ds-nowrap">
+                      <td data-label="Status" className="ds-nowrap">
                         {r.level === "critical" ? (
                           <StatusChip tone="danger">Kritis</StatusChip>
                         ) : (
                           <StatusChip tone="warn">Menipis</StatusChip>
                         )}
                       </td>
-                      <td className="ds-cell-right">
+                      <td data-action className="ds-cell-right">
                         <Link
                           className="ds-link"
                           href={`/app/history?item_id=${r.item_id}&location=${loc}`}

@@ -398,7 +398,7 @@ function OpnameDetailContent() {
           </p>
         ) : (
           <div className="data-table-wrap si-doc-table">
-            <table className="data-table">
+            <table className="data-table is-stack">
               <thead>
                 <tr>
                   <th className="si-doc-col-num">No</th>
@@ -414,16 +414,16 @@ function OpnameDetailContent() {
               <tbody>
                 {visibleLines.map((l, i) => (
                   <tr key={l.id}>
-                    <td className="si-doc-col-num">{i + 1}</td>
-                    <td>
+                    <td data-label="No" className="si-doc-col-num">{i + 1}</td>
+                    <td data-label="SKU">
                       <strong>{l.item_sku}</strong>
                     </td>
-                    <td>{l.item_name}</td>
-                    <td>{l.category_name || "—"}</td>
-                    <td>{l.unit_code}</td>
-                    <td>{formatQty(l.system_qty)}</td>
-                    <td>{formatQty(l.physical_qty)}</td>
-                    <td className={varianceClass(l.variance)}>{signedQty(l.variance)}</td>
+                    <td data-title>{l.item_name}</td>
+                    <td data-label="Kategori">{l.category_name || "—"}</td>
+                    <td data-label="Satuan">{l.unit_code}</td>
+                    <td data-label="Qty sistem">{formatQty(l.system_qty)}</td>
+                    <td data-label="Qty fisik">{formatQty(l.physical_qty)}</td>
+                    <td data-label="Selisih" className={varianceClass(l.variance)}>{signedQty(l.variance)}</td>
                   </tr>
                 ))}
               </tbody>

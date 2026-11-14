@@ -396,7 +396,7 @@ export default function MenusPage() {
           </div>
         ) : (
           <div className="ds-table-wrap">
-            <table className="ds-table is-cozy">
+            <table className="ds-table is-cozy is-stack">
               <thead>
                 <tr>
                   <th>Menu</th>
@@ -413,7 +413,7 @@ export default function MenusPage() {
                       className={`is-clickable${m.is_active ? "" : " is-inactive"}`}
                       onClick={() => void openMenu(m)}
                     >
-                      <td>
+                      <td data-title>
                         <div className="ds-cell-stack">
                           <button
                             type="button"
@@ -427,7 +427,7 @@ export default function MenusPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="ds-recipe-summary">
+                      <td data-label="Bahan per paket" data-block className="ds-recipe-summary">
                         {lines && lines.length === 0 ? (
                           // ExpandMenus (Akhir shift and Ajukan permintaan) rejects a menu with no lines.
                           <>
@@ -438,7 +438,7 @@ export default function MenusPage() {
                           summary(m)
                         )}
                       </td>
-                      <td className="ds-text-sm">
+                      <td data-label="Status" className="ds-text-sm">
                         {m.is_active ? (
                           <span className="ds-status-active">Aktif</span>
                         ) : (

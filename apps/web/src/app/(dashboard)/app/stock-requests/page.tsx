@@ -344,7 +344,7 @@ function StockRequestsContent() {
           </div>
         ) : (
           <div className="ds-table-wrap">
-            <table className="ds-table">
+            <table className="ds-table is-stack">
               <thead>
                 <tr>
                   <th>Dokumen</th>
@@ -364,7 +364,7 @@ function StockRequestsContent() {
                   const action = rowAction(r, showWarehouseUi, showKitchenUi);
                   return (
                     <tr key={r.id}>
-                      <td>
+                      <td data-title>
                         <div className="ds-cell-stack">
                           <Link className="ds-doc-link ds-num" href={detailHref(r.id)}>
                             {docNo("PRM", r.id)}
@@ -372,13 +372,13 @@ function StockRequestsContent() {
                           <span className="ds-cell-sub">oleh Dapur</span>
                         </div>
                       </td>
-                      <td className="ds-nowrap">
+                      <td data-label="Diajukan" className="ds-nowrap">
                         <div className="ds-cell-stack">
                           <span className="ds-cell-main">{relativeTime(r.created_at)}</span>
                           <span className="ds-cell-sub ds-num">{formatStamp(r.created_at)}</span>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Isi permintaan" data-block>
                         <div className="ds-cell-stack ds-cell-wide">
                           {content ? (
                             <>
@@ -392,13 +392,13 @@ function StockRequestsContent() {
                           )}
                         </div>
                       </td>
-                      <td className="ds-nowrap">
+                      <td data-label="Stok gudang" className="ds-nowrap">
                         <StockCell request={r} detail={detail} stocks={stocks} />
                       </td>
-                      <td className="ds-nowrap">
+                      <td data-label="Status" className="ds-nowrap">
                         <StatusChip kind="request" status={r.status} />
                       </td>
-                      <td className="ds-cell-right">
+                      <td data-action className="ds-cell-right">
                         <LinkButton
                           href={detailHref(r.id)}
                           size="sm"

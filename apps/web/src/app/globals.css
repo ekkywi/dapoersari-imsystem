@@ -723,12 +723,14 @@ input {
 .shell-main {
   width: 100%;
   max-width: var(--ds-content-max);
+  /* on a screen wider than the cap, centre the content in the column instead of leaving it against the sidebar */
+  margin-inline: auto;
   box-sizing: border-box;
   padding: 28px 32px 56px;
   flex: 1;
 }
 
-@media (min-width: 809px) {
+@media (min-width: 1100px) {
   .shell-sidebar {
     position: sticky;
     top: 0;
@@ -746,9 +748,9 @@ input {
   display: none;
 }
 
-/* Below ~808px the content column wraps under the sidebar: stack, no sticky, no 100vh.
+/* Below 1100px the content column wraps under the sidebar: stack, no sticky, no 100vh.
    The menu itself is folded behind a button so pages are not pushed ~850px down. */
-@media (max-width: 808px) {
+@media (max-width: 1099px) {
   .shell-sidebar {
     flex: 1 1 100%;
     width: 100%;
@@ -2759,8 +2761,8 @@ button.ds-user-row:focus-visible {
 .ds-user-email {
   font-size: var(--ds-text-xs);
   color: var(--ds-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* an email is an identifier: wrap it rather than cut it off with an ellipsis */
+  overflow-wrap: anywhere;
 }
 
 .ds-user-role {
@@ -3598,8 +3600,8 @@ a.ds-tile:focus-visible {
 }
 
 .ds-receipt {
-  flex: 1 1 360px;
-  max-width: 440px;
+  flex: 1 1 340px;
+  max-width: 420px;
   min-width: 0;
   box-sizing: border-box;
   display: flex;
@@ -3641,7 +3643,8 @@ a.ds-tile:focus-visible {
 }
 
 .ds-recent {
-  flex: 999 1 480px;
+  /* its table wants ~575px; below that the receipt form drops underneath instead of squeezing it */
+  flex: 999 1 590px;
   min-width: 0;
 }
 
@@ -4236,6 +4239,271 @@ a.ds-tile:focus-visible {
   min-width: 0;
 }
 
+/* Responsive (Tahap 9b) */
+
+/*
+ * Stacked tables. At 900px and below a row becomes a card instead of a strip that scrolls sideways.
+ * Markup contract (see any table with `is-stack`):
+ *   td[data-title]  the card heading: left aligned, shown first, no label
+ *   td[data-label]  "Label ......... value"
+ *   td[data-action] the row's button or link, last, left aligned, no label
+ * Print is unaffected (it never matches a screen max-width this small).
+ */
+@media (max-width: 900px) {
+  .ds-table.is-stack,
+  .ds-table.is-stack tbody {
+    display: block;
+  }
+
+  /* hidden from sight, still there for screen readers */
+  .ds-table.is-stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .ds-table.is-stack tbody tr {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--ds-line-soft);
+  }
+
+  .ds-table.is-stack tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .ds-table.is-stack td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    text-align: right;
+    white-space: normal;
+  }
+
+  .ds-table.is-stack td::before {
+    content: attr(data-label);
+    flex: none;
+    /* the cell may be a number cell (mono); its label must not inherit that */
+    font-family: var(--ds-font-sans);
+    font-size: var(--ds-text-sm);
+    font-weight: 400;
+    color: var(--ds-muted);
+    text-align: left;
+  }
+
+  .ds-table.is-stack td:not([data-label])::before,
+  .ds-table.is-stack td[data-label=""]::before {
+    content: none;
+  }
+
+  .ds-table.is-stack td .ds-cell-stack {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  /* long text (notes, recipe summary): label above the value, not squeezed beside it */
+  .ds-table.is-stack td[data-block] {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    text-align: left;
+  }
+
+  .ds-table.is-stack td[data-block] .ds-cell-stack {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .ds-table.is-stack td[data-title] {
+    display: block;
+    order: -1;
+    padding-bottom: 2px;
+    text-align: left;
+  }
+
+  .ds-table.is-stack td[data-title] .ds-cell-stack {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .ds-table.is-stack td[data-action] {
+    order: 99;
+    justify-content: flex-start;
+    padding-top: 6px;
+  }
+
+  /* a row with nothing to open shows a dash in the table; on a card that is just noise */
+  .ds-table.is-stack td[data-action]:not(:has(a, button)) {
+    display: none;
+  }
+
+  .ds-table.is-stack td .ds-gauge-wrap {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 220px;
+    margin-left: auto;
+  }
+}
+
+/* The berita acara table (old data-table class) as cards on narrow screens only. Never in print. */
+@media screen and (max-width: 640px) {
+  .data-table.is-stack,
+  .data-table.is-stack tbody {
+    display: block;
+  }
+
+  .data-table.is-stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .data-table.is-stack tbody tr {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--ds-line-soft);
+  }
+
+  .data-table.is-stack td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0;
+    border: 0;
+    text-align: right;
+  }
+
+  .data-table.is-stack td::before {
+    content: attr(data-label);
+    flex: none;
+    font-family: var(--ds-font-sans);
+    font-size: var(--ds-text-sm);
+    font-weight: 400;
+    color: var(--ds-muted);
+    text-align: left;
+  }
+
+  .data-table.is-stack td[data-title] {
+    display: block;
+    order: -1;
+    padding-bottom: 2px;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .data-table.is-stack td[data-title]::before {
+    content: none;
+  }
+}
+
+/* A bottom bar that stays on screen should not eat a quarter of a phone. */
+@media (max-width: 640px) {
+  .ds-sumbar {
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .ds-sumbar-stats {
+    gap: 16px;
+  }
+
+  .ds-sumbar-stats dd {
+    font-size: var(--ds-text-lg, 18px);
+  }
+
+  .ds-sumbar-side {
+    align-items: stretch;
+    width: 100%;
+  }
+}
+
+/* A table that sits beside a form (Persediaan masuk) has less room than its columns want. */
+.ds-table.is-snug {
+  --td-px: 12px;
+}
+
+/* Small laptops and landscape tablets: give the content column the room the wide tables need. */
+@media (min-width: 1100px) and (max-width: 1279px) {
+  :root {
+    --ds-sidebar-w: 224px;
+  }
+
+  .ds-table,
+  .ds-table.is-compact,
+  .ds-table.is-cozy,
+  .ds-table.is-tight,
+  .ds-table.is-detail {
+    --td-px: 12px;
+  }
+}
+
+/* Touch screens: the controls that sit below 44px on a mouse get the full target here. */
+@media (pointer: coarse) {
+  .ds-search input {
+    height: var(--ds-control-h);
+  }
+
+  .ds-btn-sm {
+    min-height: var(--ds-control-h);
+  }
+
+  .ds-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--ds-control-h);
+    min-width: var(--ds-control-h);
+  }
+
+  .ds-doc-link,
+  .ds-add-row {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--ds-control-h);
+  }
+
+  /* the text-like button that opens a row (its whole row is clickable too) */
+  .ds-row-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--ds-control-h);
+    min-width: var(--ds-control-h);
+  }
+
+  /* 44px outer box leaves a 42px field; give the field itself the larger target */
+  .ds-unit-input {
+    height: var(--ds-stepper-h);
+  }
+
+  /* grow the hit area of an inline breadcrumb link without moving the layout */
+  .shell-crumbs a {
+    display: inline-block;
+    padding: 12px 6px;
+    margin: -12px -6px;
+  }
+}
+
 /* The printable berita acara stays in the page for window.print(), hidden on screen */
 .print-only {
   display: none;
@@ -4490,6 +4758,14 @@ a.ds-tile:focus-visible {
   }
 
   .si-doc-signs.is-triple {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Two signature blocks do not fit side by side on a 320px screen. Screen only: print keeps them in a row. */
+@media screen and (max-width: 420px) {
+  .si-doc-signs,
+  .opname-doc-signs {
     grid-template-columns: 1fr;
   }
 }

@@ -281,7 +281,7 @@ export default function ItemsPage() {
           </div>
         ) : (
           <div className="ds-table-wrap">
-            <table className="ds-table is-tight">
+            <table className="ds-table is-tight is-stack">
               <thead>
                 <tr>
                   <th>SKU</th>
@@ -312,7 +312,7 @@ export default function ItemsPage() {
                       className={`${canWrite ? "is-clickable" : ""}${it.is_active ? "" : " is-inactive"}`.trim() || undefined}
                       onClick={canWrite ? () => openEdit(it) : undefined}
                     >
-                      <td className="ds-num">
+                      <td data-label="SKU" className="ds-num">
                         {canWrite ? (
                           <button
                             type="button"
@@ -325,24 +325,24 @@ export default function ItemsPage() {
                           <strong>{it.sku}</strong>
                         )}
                       </td>
-                      <td>{it.name}</td>
-                      <td className="ds-ink-2">
+                      <td data-title>{it.name}</td>
+                      <td data-label="Kategori" className="ds-ink-2">
                         {it.category_id ? (catName.get(it.category_id) ?? "—") : "—"}
                       </td>
-                      <td className="ds-num">{unitCode.get(it.unit_id) ?? "—"}</td>
-                      <td className="is-num">
+                      <td data-label="Satuan" className="ds-num">{unitCode.get(it.unit_id) ?? "—"}</td>
+                      <td data-label="Minimum" className="is-num">
                         <Qty value={it.min_stock} />
                       </td>
-                      <td className={`is-num ${levelClass(whStock.get(it.id), it.min_stock)}`.trim()}>
+                      <td data-label="Gudang" className={`is-num ${levelClass(whStock.get(it.id), it.min_stock)}`.trim()}>
                         <Qty value={whStock.get(it.id) ?? 0} />
                       </td>
-                      <td className={`is-num ${levelClass(kitStock.get(it.id), it.min_stock)}`.trim()}>
+                      <td data-label="Dapur" className={`is-num ${levelClass(kitStock.get(it.id), it.min_stock)}`.trim()}>
                         <Qty value={kitStock.get(it.id) ?? 0} />
                       </td>
-                      <td className="ds-ink-2 ds-text-sm">
+                      <td data-label="Dipakai di" className="ds-ink-2 ds-text-sm">
                         {used > 0 ? `${used} resep` : "—"}
                       </td>
-                      <td className="ds-text-sm">
+                      <td data-label="Status" className="ds-text-sm">
                         {it.is_active ? (
                           <span className="ds-status-active">Aktif</span>
                         ) : (

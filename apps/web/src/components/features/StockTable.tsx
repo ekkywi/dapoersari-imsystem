@@ -244,7 +244,7 @@ export function StockTable({ location }: { location: Location }) {
           </div>
         ) : (
           <div className="ds-table-wrap">
-            <table className="ds-table is-cozy">
+            <table className="ds-table is-cozy is-stack">
               <thead>
                 <tr>
                   <th>Item</th>
@@ -261,7 +261,7 @@ export function StockTable({ location }: { location: Location }) {
               <tbody>
                 {visible.map((r) => (
                   <tr key={r.id} className={r.active ? undefined : "is-inactive"}>
-                    <td>
+                    <td data-title>
                       <div className="ds-cell-stack">
                         <span className="ds-cell-name">{r.name}</span>
                         <span className="ds-cell-sub ds-num">
@@ -270,12 +270,12 @@ export function StockTable({ location }: { location: Location }) {
                         </span>
                       </div>
                     </td>
-                    <td className="ds-ink-2 ds-text-sm">{r.category ?? "—"}</td>
-                    <td className="is-num ds-strong-cell">
+                    <td data-label="Kategori" className="ds-ink-2 ds-text-sm">{r.category ?? "—"}</td>
+                    <td data-label="Stok" className="is-num ds-strong-cell">
                       <Qty value={r.qty} unit={r.unit} />
                     </td>
                     {kitchen ? (
-                      <td className="is-num ds-nowrap">
+                      <td data-label="Di jalan" className="is-num ds-nowrap">
                         {r.transit > 0 ? (
                           <Qty value={r.transit} unit={r.unit} tone="warn" />
                         ) : (
@@ -283,7 +283,7 @@ export function StockTable({ location }: { location: Location }) {
                         )}
                       </td>
                     ) : null}
-                    <td>
+                    <td data-label="Terhadap minimum">
                       <MinGauge
                         layout="stacked"
                         effective={r.qty + r.transit}
@@ -291,7 +291,7 @@ export function StockTable({ location }: { location: Location }) {
                         unit={r.unit}
                       />
                     </td>
-                    <td className="ds-nowrap">
+                    <td data-label="Status" className="ds-nowrap">
                       {r.level === "critical" ? (
                         <StatusChip tone="danger">Kritis</StatusChip>
                       ) : r.level === "low" ? (
@@ -300,7 +300,7 @@ export function StockTable({ location }: { location: Location }) {
                         <span className="ds-muted-text">Aman</span>
                       )}
                     </td>
-                    <td className="ds-cell-right">
+                    <td data-action className="ds-cell-right">
                       <Link
                         className="ds-link"
                         href={`/app/history?item_id=${r.id}&location=${location}`}

@@ -136,7 +136,7 @@ function OpnamesContent() {
           </div>
         ) : (
           <div className="ds-table-wrap">
-            <table className="ds-table">
+            <table className="ds-table is-stack">
               <thead>
                 <tr>
                   <th>Waktu</th>
@@ -152,28 +152,28 @@ function OpnamesContent() {
               <tbody>
                 {visible.map((r) => (
                   <tr key={r.id}>
-                    <td className="ds-nowrap">
+                    <td data-label="Waktu" className="ds-nowrap">
                       <div className="ds-cell-stack">
                         <span className="ds-cell-main">{relativeTime(r.created_at)}</span>
                         <span className="ds-cell-sub ds-num">{formatStamp(r.created_at)}</span>
                       </div>
                     </td>
-                    <td>
+                    <td data-title>
                       <Link className="ds-doc-link ds-num" href={detailHref(r.id)}>
                         {docNo("OPN", r.id)}
                       </Link>
                     </td>
-                    <td className="ds-nowrap">
+                    <td data-label="Lokasi" className="ds-nowrap">
                       <LocationTag
                         location={r.location === "kitchen" ? "kitchen" : "warehouse"}
                         size="sm"
                       />
                     </td>
-                    <td className="ds-nowrap">
+                    <td data-label="Status" className="ds-nowrap">
                       <StatusChip kind="opname" status={r.status} />
                     </td>
-                    <td className="ds-ink-2">{r.note || "—"}</td>
-                    <td className="ds-cell-right">
+                    <td data-label="Catatan" data-block className="ds-ink-2">{r.note || "—"}</td>
+                    <td data-action className="ds-cell-right">
                       <LinkButton
                         href={detailHref(r.id)}
                         size="sm"

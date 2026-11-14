@@ -355,7 +355,7 @@ export default function StockInsPage() {
             </div>
           ) : (
             <div className="ds-table-wrap">
-              <table className="ds-table is-tight">
+              <table className="ds-table is-tight is-snug is-stack">
                 <thead>
                   <tr>
                     <th>Waktu</th>
@@ -374,23 +374,23 @@ export default function StockInsPage() {
                     const u = it ? (unitCode.get(it.unit_id) ?? "") : "";
                     return (
                       <tr key={r.id}>
-                        <td>
+                        <td data-label="Waktu">
                           <div className="ds-cell-stack">
                             <span className="ds-num">{formatRecent(r.created_at)}</span>
                             <span className="ds-cell-sub ds-num">{docNo("SIN", r.id)}</span>
                           </div>
                         </td>
-                        <td className="ds-cell-name">{it?.name ?? "Item tidak dikenal"}</td>
-                        <td className="ds-ink-2">
+                        <td data-title className="ds-cell-name">{it?.name ?? "Item tidak dikenal"}</td>
+                        <td data-label="Pemasok" className="ds-ink-2">
                           {r.supplier_id ? (supplierById.get(r.supplier_id) ?? "—") : "—"}
                         </td>
-                        <td className="is-num ds-strong-cell">
+                        <td data-label="Jumlah" className="is-num ds-strong-cell">
                           <Qty value={r.qty} unit={u} />
                         </td>
-                        <td>
+                        <td data-label="Kedaluwarsa">
                           <ExpiryCell iso={r.expired_at} />
                         </td>
-                        <td className="ds-cell-right">
+                        <td data-action className="ds-cell-right">
                           <Link className="ds-link" href={`/app/warehouse/stock-ins/${r.id}`}>
                             Berita acara
                           </Link>

@@ -309,7 +309,7 @@ export default function ClosingsPage() {
               ) : (
                 <>
                   <div className="ds-table-wrap">
-                    <table className="ds-table is-compact">
+                    <table className="ds-table is-compact is-stack">
                       <thead>
                         <tr>
                           <th>Tanggal</th>
@@ -327,8 +327,8 @@ export default function ClosingsPage() {
                           const sum = pkgs.reduce((acc, p) => acc + p.qty_paket, 0);
                           return (
                             <tr key={c.id}>
-                              <td>{formatDateOnly(c.closing_date)}</td>
-                              <td className="ds-ink-2">
+                              <td data-title>{formatDateOnly(c.closing_date)}</td>
+                              <td data-label="Isi" data-block className="ds-ink-2">
                                 {d ? (
                                   <>
                                     {pkgs.length} menu ·{" "}
@@ -338,8 +338,8 @@ export default function ClosingsPage() {
                                   <span className="ds-cell-sub">Memuat isi…</span>
                                 )}
                               </td>
-                              <td className="ds-num ds-muted-cell">{formatClock(c.created_at)}</td>
-                              <td className="ds-cell-right">
+                              <td data-label="Dicatat" className="ds-num ds-muted-cell">{formatClock(c.created_at)}</td>
+                              <td data-action className="ds-cell-right">
                                 <button
                                   type="button"
                                   className="ds-link-btn"

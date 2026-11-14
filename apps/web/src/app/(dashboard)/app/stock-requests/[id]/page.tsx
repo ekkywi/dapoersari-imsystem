@@ -559,7 +559,7 @@ function StockRequestDetailContent() {
               </p>
             </div>
             <div className="ds-table-wrap">
-              <table className="ds-table is-detail">
+              <table className="ds-table is-detail is-stack">
                 <thead>
                   <tr>
                     <th>Bahan</th>
@@ -576,7 +576,7 @@ function StockRequestDetailContent() {
                 <tbody>
                   {checks.map((c) => (
                     <tr key={c.line.id} className={showStockCols && c.shortBy > 0 ? "is-short" : undefined}>
-                      <td>
+                      <td data-title>
                         <div className="ds-cell-stack">
                           <span className="ds-cell-name">{c.line.item_name}</span>
                           <span className="ds-cell-sub ds-num">
@@ -585,15 +585,15 @@ function StockRequestDetailContent() {
                           </span>
                         </div>
                       </td>
-                      <td className="is-num">
+                      <td data-label="Diminta" className="is-num">
                         <Qty value={c.line.qty} unit={c.line.unit_code} />
                       </td>
                       {showStockCols ? (
                         <>
-                          <td className="is-num">
+                          <td data-label="Stok gudang" className="is-num">
                             <Qty value={c.stock} className="ds-ink-2" />
                           </td>
-                          <td className="is-num">
+                          <td data-label="Sisa setelah kirim" className="is-num">
                             {c.shortBy > 0 ? (
                               <Qty value={c.after} signed tone="danger" />
                             ) : c.belowMin ? (
@@ -602,7 +602,7 @@ function StockRequestDetailContent() {
                               <Qty value={c.after} />
                             )}
                           </td>
-                          <td>
+                          <td data-label="Keterangan" data-block>
                             {c.shortBy > 0 ? (
                               <span className="ds-note-danger">
                                 Kurang {formatQty(c.shortBy, c.line.unit_code)}

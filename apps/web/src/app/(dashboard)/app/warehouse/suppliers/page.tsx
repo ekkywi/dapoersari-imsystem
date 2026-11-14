@@ -181,7 +181,7 @@ export default function SuppliersPage() {
           </div>
         ) : (
           <div className="ds-table-wrap">
-            <table className="ds-table is-tight">
+            <table className="ds-table is-tight is-stack">
               <thead>
                 <tr>
                   <th>Nama</th>
@@ -197,7 +197,7 @@ export default function SuppliersPage() {
                     className={`${canWrite ? "is-clickable" : ""}${s.is_active ? "" : " is-inactive"}`.trim() || undefined}
                     onClick={canWrite ? () => openEdit(s) : undefined}
                   >
-                    <td>
+                    <td data-title>
                       {canWrite ? (
                         <button type="button" className="ds-row-btn" aria-label={`Ubah pemasok ${s.name}`}>
                           {s.name}
@@ -206,9 +206,9 @@ export default function SuppliersPage() {
                         <strong>{s.name}</strong>
                       )}
                     </td>
-                    <td className="ds-num">{s.phone || "—"}</td>
-                    <td className="ds-ink-2">{s.note || "—"}</td>
-                    <td className="ds-text-sm">
+                    <td data-label="Telepon" className="ds-num">{s.phone || "—"}</td>
+                    <td data-label="Catatan" data-block className="ds-ink-2">{s.note || "—"}</td>
+                    <td data-label="Status" className="ds-text-sm">
                       {s.is_active ? <span className="ds-status-active">Aktif</span> : <span>Nonaktif</span>}
                     </td>
                   </tr>

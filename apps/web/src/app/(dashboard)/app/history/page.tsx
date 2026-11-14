@@ -264,7 +264,7 @@ function HistoryContent() {
           </div>
         ) : tab === "stock" ? (
           <div className="ds-table-wrap">
-            <table className="ds-table is-cozy">
+            <table className="ds-table is-cozy is-stack">
               <thead>
                 <tr>
                   <th>Waktu</th>
@@ -284,24 +284,24 @@ function HistoryContent() {
                   const reason = stockReasonLabel(r.reason);
                   return (
                     <tr key={r.id}>
-                      <td className="ds-num ds-nowrap ds-text-sm">{formatFullStamp(r.created_at)}</td>
-                      <td>
+                      <td data-label="Waktu" className="ds-num ds-nowrap ds-text-sm">{formatFullStamp(r.created_at)}</td>
+                      <td data-title>
                         <div className="ds-cell-stack">
                           <span className="ds-cell-name">{r.item_name}</span>
                           <span className="ds-cell-sub ds-num">{r.item_sku}</span>
                         </div>
                       </td>
-                      <td className="ds-nowrap">
+                      <td data-label="Lokasi" className="ds-nowrap">
                         <LocationTag location={r.location === "kitchen" ? "kitchen" : "warehouse"} size="sm" />
                       </td>
-                      <td className="is-num ds-strong-cell ds-nowrap">
+                      <td data-label="Perubahan" className="is-num ds-strong-cell ds-nowrap">
                         <Qty value={r.delta} unit={r.unit_code} signed />
                       </td>
-                      <td className="is-num ds-nowrap">
+                      <td data-label="Setelah" className="is-num ds-nowrap">
                         <Qty value={r.qty_after} unit={r.unit_code} />
                       </td>
-                      <td className="ds-ink-2">{reason}</td>
-                      <td className="ds-cell-right">
+                      <td data-label="Alasan" className="ds-ink-2">{reason}</td>
+                      <td data-action className="ds-cell-right">
                         {href ? (
                           <Link
                             className="ds-link"
@@ -322,7 +322,7 @@ function HistoryContent() {
           </div>
         ) : (
           <div className="ds-table-wrap">
-            <table className="ds-table is-cozy">
+            <table className="ds-table is-cozy is-stack">
               <thead>
                 <tr>
                   <th>Waktu</th>
@@ -340,11 +340,11 @@ function HistoryContent() {
                   const action = activityActionLabel(r.action);
                   return (
                     <tr key={r.id}>
-                      <td className="ds-num ds-nowrap ds-text-sm">{formatFullStamp(r.created_at)}</td>
-                      <td className="ds-cell-name">{action}</td>
-                      <td className="ds-num ds-text-sm">{activityEntityLabel(r.entity_type, r.entity_id)}</td>
-                      <td className="ds-ink-2">{activityDetailLabel(r.detail)}</td>
-                      <td className="ds-cell-right">
+                      <td data-label="Waktu" className="ds-num ds-nowrap ds-text-sm">{formatFullStamp(r.created_at)}</td>
+                      <td data-title className="ds-cell-name">{action}</td>
+                      <td data-label="Dokumen" className="ds-num ds-text-sm">{activityEntityLabel(r.entity_type, r.entity_id)}</td>
+                      <td data-label="Keterangan" data-block className="ds-ink-2">{activityDetailLabel(r.detail)}</td>
+                      <td data-action className="ds-cell-right">
                         {href ? (
                           <Link className="ds-link" href={href} aria-label={`Buka dokumen ${action}`}>
                             Buka
