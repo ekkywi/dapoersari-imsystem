@@ -1,59 +1,89 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { EntityDrawer } from "@/components/features/EntityDrawer";
+import { StatusToggle } from "@/components/features/StatusToggle";
+import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
+import { IconClose } from "@/components/ui/Icons";
 import { InlineAlert } from "@/components/ui/InlineAlert";
+import { LocationTag } from "@/components/ui/LocationTag";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Qty } from "@/components/ui/Qty";
+import { FilterChips } from "@/components/ui/Tabs";
+import { UnitInput } from "@/components/ui/UnitInput";
 import { getUser } from "@/lib/auth";
-import { kitchenApi, Menu } from "@/lib/kitchen";
+import { formatQty } from "@/lib/format";
+import { kitchenApi, type Menu, type RecipeLine } from "@/lib/kitchen";
 import { canMutateKitchen } from "@/lib/rbac";
-import { toastError, toastSuccess } from "@/lib/toast";
-import { Item, warehouseApi } from "@/lib/warehouse";
+import { toastSuccess } from "@/lib/toast";
+import { type Item, type Unit, warehouseApi } from "@/lib/warehouse";
 
-type DraftLine = { item_id: string; qty_per_paket: string };
-type DrawerMode = "create" | "edit" | null;
+type Filter = "all" | "active" | "inactive";
+type DraftRow = { key: number; item_id: string; qty: string };
+
+const PREVIEW = 3;
+
+function explainMenuError(message: string): string {
+  // The API answers 400 "data tidak valid" for a repeated ingredient or qty <= 0, and a bare
+  // "gagal …" when the database refuses; neither says which line is wrong.
+  if (message.startsWith("gagal") || message === "data tidak valid") {
+    return "Server menolak data ini. Periksa nama menu, bahan (satu bahan hanya sekali per resep) dan qty (harus lebih dari 0).";
+  }
+  if (message === "data tidak ditemukan") {
+    return "Menu atau salah satu bahan tidak ditemukan. Muat ulang halaman, lalu coba lagi.";
+  }
+  return message;
+}
 
 export default function MenusPage() {
-  const [rows, setRows] = useState<Menu[]>([]);
+  const [menus, setMenus] = useState<Menu[]>([]);
   const [items, setItems] = useState<Item[]>([]);
-  const [query, setQuery] = useState("");
-  const [name, setName] = useState("");
-  const [lines, setLines] = useState<DraftLine[]>([
-    { item_id: "", qty_per_paket: "1" },
-  ]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  // Recipe lines per menu. The list endpoint carries none, so they are fetched once per menu.
+  // TODO(api): return lines in GET /kitchen/menus.
+  const [recipes, setRecipes] = useState<Record<string, RecipeLine[]>>({});
+  const [recipesState, setRecipesState] = useState<"loading" | "ready" | "partial">("loading");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [openError, setOpenError] = useState<string | null>(null);
   const [canWrite, setCanWrite] = useState(false);
-  const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
+
+  const [drawer, setDrawer] = useState<"create" | "edit" | null>(null);
   const [editing, setEditing] = useState<Menu | null>(null);
-  const [detail, setDetail] = useState<Menu | null>(null);
-  // Status change is confirmed in the row itself, never with window.confirm.
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [statusError, setStatusError] = useState<string | null>(null);
-
-  const activeItems = useMemo(
-    () => items.filter((it) => it.is_active),
-    [items],
-  );
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((m) => m.name.toLowerCase().includes(q));
-  }, [rows, query]);
+  const [viewing, setViewing] = useState<Menu | null>(null);
+  const [name, setName] = useState("");
+  const [rows, setRows] = useState<DraftRow[]>([]);
+  const [nextKey, setNextKey] = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoadError(null);
     try {
-      const [menus, itemRows] = await Promise.all([
+      const [menuRows, itemRows, unitRows] = await Promise.all([
         kitchenApi.listMenus(),
         warehouseApi.listItems(),
+        warehouseApi.listUnits(),
       ]);
-      setRows(menus);
+      setMenus(menuRows);
       setItems(itemRows);
+      setUnits(unitRows);
+      setLoading(false);
+
+      const settled = await Promise.allSettled(menuRows.map((m) => kitchenApi.getMenu(m.id)));
+      const next: Record<string, RecipeLine[]> = {};
+      let failed = false;
+      settled.forEach((r, i) => {
+        if (r.status === "fulfilled") next[menuRows[i].id] = r.value.lines ?? [];
+        else failed = true;
+      });
+      setRecipes(next);
+      setRecipesState(failed ? "partial" : "ready");
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal memuat menu");
-    } finally {
+      setLoadError(e instanceof Error ? e.message : "Gagal memuat menu");
       setLoading(false);
     }
   }, []);
@@ -64,386 +94,492 @@ export default function MenusPage() {
     void load();
   }, [load]);
 
-  function closeDrawer() {
-    setDrawerMode(null);
-    setEditing(null);
-    setFormError(null);
+  const unitCode = useMemo(() => new Map(units.map((u) => [u.id, u.code])), [units]);
+  const itemById = useMemo(() => new Map(items.map((it) => [it.id, it])), [items]);
+  const activeItems = useMemo(() => items.filter((it) => it.is_active), [items]);
+
+  const counts = useMemo(() => {
+    const active = menus.filter((m) => m.is_active).length;
+    return { all: menus.length, active, inactive: menus.length - active };
+  }, [menus]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return menus
+      .filter((m) => {
+        if (filter === "active" && !m.is_active) return false;
+        if (filter === "inactive" && m.is_active) return false;
+        if (!q) return true;
+        if (m.name.toLowerCase().includes(q)) return true;
+        return (recipes[m.id] ?? []).some((l) => (l.item_name ?? "").toLowerCase().includes(q));
+      })
+      .sort(
+        (a, b) =>
+          Number(b.is_active) - Number(a.is_active) || a.name.localeCompare(b.name, "id"),
+      );
+  }, [menus, filter, query, recipes]);
+
+  function newRow(key: number, item_id = "", qty = ""): DraftRow {
+    return { key, item_id, qty };
+  }
+
+  function resetForm(menu: Menu | null, lines: RecipeLine[]) {
+    setEditing(menu);
+    setName(menu?.name ?? "");
+    if (lines.length > 0) {
+      setRows(lines.map((l, i) => newRow(i + 1, l.item_id, String(l.qty_per_paket))));
+      setNextKey(lines.length + 1);
+    } else {
+      setRows([newRow(1)]);
+      setNextKey(2);
+    }
+    setSaveError(null);
   }
 
   function openCreate() {
-    setEditing(null);
-    setName("");
-    setLines([{ item_id: activeItems[0]?.id ?? "", qty_per_paket: "1" }]);
-    setFormError(null);
-    setDrawerMode("create");
+    resetForm(null, []);
+    setDrawer("create");
   }
 
-  async function openEdit(id: string) {
-    try {
-      const m = await kitchenApi.getMenu(id);
-      setEditing(m);
-      setName(m.name);
-      setLines(
-        (m.lines ?? []).map((l) => ({
-          item_id: l.item_id,
-          qty_per_paket: String(l.qty_per_paket),
-        })),
-      );
-      if (!(m.lines && m.lines.length > 0)) {
-        setLines([{ item_id: activeItems[0]?.id ?? "", qty_per_paket: "1" }]);
+  async function openMenu(m: Menu) {
+    setOpenError(null);
+    let lines = recipes[m.id];
+    if (!lines) {
+      try {
+        lines = (await kitchenApi.getMenu(m.id)).lines ?? [];
+      } catch (e) {
+        setOpenError(
+          `Resep ${m.name} belum bisa dimuat: ${e instanceof Error ? e.message : "gagal memuat"}. Coba lagi.`,
+        );
+        return;
       }
-      setFormError(null);
-      setDrawerMode("edit");
-    } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal memuat menu");
+    }
+    if (canWrite) {
+      resetForm(m, lines);
+      setDrawer("edit");
+    } else {
+      setViewing(m);
     }
   }
 
-  async function openDetail(id: string) {
-    try {
-      setDetail(await kitchenApi.getMenu(id));
-    } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal memuat detail");
-    }
+  function closeDrawer() {
+    setDrawer(null);
+    setEditing(null);
+    setSaveError(null);
   }
 
-  function parseLines() {
-    return lines
-      .map((l) => ({
-        item_id: l.item_id,
-        qty_per_paket: Number(l.qty_per_paket),
-      }))
-      .filter((l) => l.item_id && l.qty_per_paket > 0);
+  function updateRow(key: number, patch: Partial<DraftRow>) {
+    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!canWrite) return;
-    const parsed = parseLines();
-    if (!name.trim() || parsed.length === 0) {
-      setFormError("Nama menu dan minimal satu bahan wajib diisi");
-      return;
+  function addRow() {
+    setRows((rs) => [...rs, newRow(nextKey)]);
+    setNextKey((k) => k + 1);
+  }
+
+  // Items offered in a row: every active item, plus the one that row already holds (an inactive
+  // ingredient of an old recipe must stay visible so it can be replaced on purpose, but must not
+  // become a choice for the other rows).
+  const sortedItems = useMemo(
+    () => [...items].sort((a, b) => a.name.localeCompare(b.name, "id")),
+    [items],
+  );
+
+  const trimmed = name.trim();
+  const sameName = menus.find(
+    (m) => m.id !== editing?.id && m.name.trim().toLowerCase() === trimmed.toLowerCase(),
+  );
+
+  // First thing wrong, in the order the form reads. null = ready to save.
+  const reason = useMemo((): string | null => {
+    if (trimmed === "") return "Nama menu wajib diisi.";
+    if (sameName) {
+      return sameName.is_active
+        ? `Menu ${sameName.name} sudah ada. Pakai nama lain.`
+        : `Menu ${sameName.name} sudah ada tetapi nonaktif. Aktifkan menu itu atau pakai nama lain.`;
     }
+    if (rows.length === 0) return "Tambahkan minimal satu bahan.";
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].item_id === "") return `Pilih bahan di baris ${i + 1}, atau hapus barisnya.`;
+    }
+    for (let i = 0; i < rows.length; i++) {
+      if (!(Number(rows[i].qty) > 0)) {
+        return `Isi qty per paket di baris ${i + 1}. Harus lebih dari 0.`;
+      }
+    }
+    const seen = new Map<string, number>();
+    for (let i = 0; i < rows.length; i++) {
+      const first = seen.get(rows[i].item_id);
+      if (first !== undefined) {
+        const label = itemById.get(rows[i].item_id)?.name ?? "Bahan ini";
+        return `${label} dipilih di baris ${first + 1} dan ${i + 1}. Satu bahan cukup sekali per resep.`;
+      }
+      seen.set(rows[i].item_id, i);
+    }
+    return null;
+  }, [trimmed, sameName, rows, itemById]);
+
+  async function save() {
+    if (reason !== null) return;
     setSaving(true);
-    setFormError(null);
+    setSaveError(null);
+    const lines = rows.map((r) => ({ item_id: r.item_id, qty_per_paket: Number(r.qty) }));
     try {
-      if (drawerMode === "create") {
-        await kitchenApi.createMenu({ name, lines: parsed });
-        toastSuccess("Menu/resep berhasil ditambahkan");
-      } else if (drawerMode === "edit" && editing) {
-        await kitchenApi.patchMenu(editing.id, { name });
-        await kitchenApi.replaceRecipe(editing.id, { lines: parsed });
-        toastSuccess("Menu/resep diperbarui");
+      if (drawer === "create") {
+        await kitchenApi.createMenu({ name: trimmed, lines });
+        toastSuccess(`Menu ${trimmed} ditambahkan`);
+      } else if (editing) {
+        const renamed = trimmed !== editing.name;
+        if (renamed) await kitchenApi.patchMenu(editing.id, { name: trimmed });
+        try {
+          await kitchenApi.replaceRecipe(editing.id, { lines });
+        } catch (e) {
+          if (renamed) {
+            // Two requests, so the first can land while the second fails. Say so instead of
+            // leaving the user to guess what was saved.
+            setEditing({ ...editing, name: trimmed });
+            void load();
+            setSaveError(
+              `Nama menu sudah tersimpan, tetapi resepnya belum. ${explainMenuError(e instanceof Error ? e.message : "Gagal menyimpan")}`,
+            );
+            return;
+          }
+          throw e;
+        }
+        toastSuccess("Resep diperbarui");
       }
       closeDrawer();
       await load();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Gagal menyimpan");
+    } catch (e) {
+      setSaveError(explainMenuError(e instanceof Error ? e.message : "Gagal menyimpan"));
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleActive(m: Menu) {
-    if (!canWrite) return;
-    const next = !m.is_active;
-    setBusyId(m.id);
-    setStatusError(null);
+  async function setActive(next: boolean) {
+    if (!editing) return;
+    setSaving(true);
+    setSaveError(null);
     try {
-      await kitchenApi.patchMenu(m.id, { is_active: next });
+      await kitchenApi.patchMenu(editing.id, { is_active: next });
       toastSuccess(next ? "Menu diaktifkan" : "Menu dinonaktifkan");
-      // Reload first, close the confirmation after: otherwise the row flashes back to its old state.
+      closeDrawer();
       await load();
-      setConfirmId(null);
     } catch (e) {
-      setStatusError(
-        `${m.name}: ${e instanceof Error ? e.message : "Gagal mengubah status."} Status menu belum berubah.`,
-      );
+      setSaveError(e instanceof Error ? e.message : "Gagal mengubah status");
     } finally {
-      setBusyId(null);
+      setSaving(false);
     }
   }
 
-  const itemOptions = useMemo(() => {
-    const idsInForm = new Set(lines.map((l) => l.item_id).filter(Boolean));
-    return items.filter((it) => it.is_active || idsInForm.has(it.id));
-  }, [items, lines]);
+  function summary(m: Menu): string {
+    const lines = recipes[m.id];
+    if (!lines) return recipesState === "loading" ? "Memuat bahan…" : "—";
+    const shown = lines
+      .slice(0, PREVIEW)
+      .map((l) => `${l.item_name ?? "?"} ${formatQty(l.qty_per_paket, l.unit_code)}`);
+    if (lines.length > PREVIEW) shown.push(`+${lines.length - PREVIEW} lagi`);
+    return shown.join(" · ");
+  }
+
+  // After a failed load the item list is empty too, which must not read as "no active items".
+  // After a failed load every count would read 0, which looks like "no menus". Show none instead.
+  const known = !loading && !(loadError && menus.length === 0);
+  const noItems = canWrite && !loading && !loadError && activeItems.length === 0;
+  const addBlockedReason = loadError
+    ? "Daftar menu belum bisa dimuat. Coba lagi dulu."
+    : noItems
+      ? "Belum ada item aktif. Tambahkan item di Master data dulu."
+      : undefined;
+  const viewingLines = viewing ? (recipes[viewing.id] ?? []) : [];
 
   return (
-    <div className="si-page">
-      <header className="si-page-header">
-        <div className="page-header-text">
-          <p className="section-label">Dapur</p>
-          <h1 className="page-title">Resep / menu</h1>
-          <p className="lede">Menu dan resep bahan.</p>
-        </div>
-      </header>
-
-      <div className="si-toolbar">
-        <div className="si-toolbar-meta">
-          <p className="si-count">
-            <strong>{filtered.length}</strong> dari {rows.length} menu
-          </p>
-          <input
-            className="input si-search"
-            type="search"
-            placeholder="Cari nama menu…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <div className="si-toolbar-actions">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => void load()}
-          >
-            Muat ulang
-          </button>
-          {canWrite ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={openCreate}
-              disabled={activeItems.length === 0}
-            >
+    <div className="ds-screen">
+      <PageHeader
+        kicker={<LocationTag location="kitchen" label="Pintu dapur" />}
+        title="Resep / menu"
+        lede="Bahan yang terpakai untuk satu paket tiap menu. Akhir shift memakai resep ini untuk mengurangi stok dapur."
+        actions={
+          canWrite ? (
+            <Button disabled={loading || addBlockedReason !== undefined} onClick={openCreate}>
               Tambah menu
-            </button>
-          ) : null}
-        </div>
-      </div>
+            </Button>
+          ) : undefined
+        }
+        actionsNote={canWrite ? addBlockedReason : undefined}
+      />
 
-      {statusError ? (
-        <InlineAlert tone="danger" title="Status menu tidak berubah" role="alert">
-          {statusError}
+      {loadError ? (
+        <InlineAlert
+          role="alert"
+          title="Daftar menu belum bisa dimuat"
+          actions={
+            <Button size="sm" variant="secondary" onClick={() => void load()}>
+              Coba lagi
+            </Button>
+          }
+        >
+          {loadError}. Periksa koneksi Anda, lalu coba lagi.
         </InlineAlert>
       ) : null}
 
-      <section className="si-table-card">
-        {loading ? (
-          <div className="si-empty">
-            <p className="muted">Memuat data…</p>
+      {openError ? (
+        <InlineAlert role="alert" title="Resep belum bisa dibuka">
+          {openError}
+        </InlineAlert>
+      ) : null}
+
+      {recipesState === "partial" ? (
+        <InlineAlert
+          tone="warn"
+          title="Ringkasan bahan belum lengkap"
+          actions={
+            <Button size="sm" variant="secondary" onClick={() => void load()}>
+              Muat ulang
+            </Button>
+          }
+        >
+          Resep sebagian menu belum bisa dimuat, jadi kolom bahan di bawah ada yang kosong.
+        </InlineAlert>
+      ) : null}
+
+      <section className="ds-card ds-card-clip">
+        <div className="ds-toolbar">
+          <FilterChips
+            label="Filter status"
+            value={filter}
+            onChange={(v) => setFilter(v as Filter)}
+            items={[
+              { id: "all", label: "Semua", count: known ? counts.all : undefined },
+              { id: "active", label: "Aktif", count: known ? counts.active : undefined },
+              { id: "inactive", label: "Nonaktif", count: known ? counts.inactive : undefined },
+            ]}
+          />
+          <div className="ds-toolbar-group">
+            <label className="ds-search">
+              <span className="ds-sr-only">Cari menu</span>
+              <input
+                type="search"
+                placeholder="Cari menu atau bahan"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </label>
+            <p className="ds-card-hint">
+              {canWrite ? "Klik baris untuk mengubah resep" : "Klik baris untuk melihat resep"}
+            </p>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="si-empty">
-            <p className="si-empty-title">Belum ada menu</p>
-            <p className="si-empty-desc">Belum ada menu.</p>
+        </div>
+
+        {loading ? (
+          <div className="ds-empty">
+            <p className="ds-empty-text">Memuat resep…</p>
+          </div>
+        ) : loadError && menus.length === 0 ? (
+          <div className="ds-empty">
+            <p className="ds-empty-title">Daftar belum tersedia</p>
+            <p className="ds-empty-text">Gunakan “Coba lagi” di atas setelah koneksi pulih.</p>
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="ds-empty">
+            <p className="ds-empty-title">
+              {menus.length === 0 ? "Belum ada menu" : "Tidak ada yang cocok"}
+            </p>
+            <p className="ds-empty-text">
+              {menus.length === 0
+                ? canWrite
+                  ? "Tambahkan menu pertama beserta bahan per paketnya. Menu dipakai di Akhir shift dan Ajukan permintaan."
+                  : "Belum ada menu yang dibuat."
+                : "Ubah filter atau kata kunci pencarian."}
+            </p>
           </div>
         ) : (
-          <div className="data-table-wrap">
-            <table className="data-table">
+          <div className="ds-table-wrap">
+            <table className="ds-table is-cozy">
               <thead>
                 <tr>
-                  <th>Nama</th>
+                  <th>Menu</th>
+                  <th>Bahan per paket</th>
                   <th>Status</th>
-                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((m) => (
-                  <tr key={m.id}>
-                    <td>
-                      <strong>{m.name}</strong>
-                    </td>
-                    <td>
-                      {m.is_active ? (
-                        <span className="badge badge-success">Aktif</span>
-                      ) : (
-                        <span className="badge badge-neutral">Nonaktif</span>
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() => void openDetail(m.id)}
-                      >
-                        Detail
-                      </button>
-                      {canWrite && confirmId === m.id ? (
-                        <div
-                          role="group"
-                          aria-label={`Konfirmasi ubah status ${m.name}`}
-                        >
-                          <p className="muted">
-                            {m.is_active
-                              ? `Nonaktifkan ${m.name}? Menu tidak dipakai di penutupan baru.`
-                              : `Aktifkan ${m.name}? Menu bisa dipilih lagi di penutupan baru.`}
-                          </p>
+                {visible.map((m) => {
+                  const lines = recipes[m.id];
+                  return (
+                    <tr
+                      key={m.id}
+                      className={`is-clickable${m.is_active ? "" : " is-inactive"}`}
+                      onClick={() => void openMenu(m)}
+                    >
+                      <td>
+                        <div className="ds-cell-stack">
                           <button
                             type="button"
-                            className="btn btn-ghost"
-                            onClick={() => {
-                              setConfirmId(null);
-                              setStatusError(null);
-                            }}
+                            className="ds-row-btn"
+                            aria-label={`${canWrite ? "Ubah" : "Lihat"} resep ${m.name}`}
                           >
-                            Batal
-                          </button>{" "}
-                          <button
-                            type="button"
-                            className="btn btn-primary"
-                            disabled={busyId === m.id}
-                            onClick={() => void toggleActive(m)}
-                          >
-                            {busyId === m.id
-                              ? "Memproses…"
-                              : m.is_active
-                                ? "Ya, nonaktifkan"
-                                : "Ya, aktifkan"}
+                            {m.name}
                           </button>
+                          <span className="ds-cell-sub">
+                            {lines ? `${lines.length} bahan per paket` : "—"}
+                          </span>
                         </div>
-                      ) : canWrite ? (
-                        <>
-                          {" "}
-                          <button
-                            type="button"
-                            className="btn btn-ghost"
-                            onClick={() => void openEdit(m.id)}
-                          >
-                            Edit
-                          </button>{" "}
-                          <button
-                            type="button"
-                            className="btn btn-ghost"
-                            onClick={() => {
-                              setStatusError(null);
-                              setConfirmId(m.id);
-                            }}
-                          >
-                            {m.is_active ? "Nonaktifkan" : "Aktifkan"}
-                          </button>
-                        </>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="ds-recipe-summary">
+                        {lines && lines.length === 0 ? (
+                          // ExpandMenus (Akhir shift and Ajukan permintaan) rejects a menu with no lines.
+                          <>
+                            <span className="ds-tone-warn">Belum ada bahan.</span> Belum bisa dipakai di
+                            Akhir shift dan Ajukan permintaan.
+                          </>
+                        ) : (
+                          summary(m)
+                        )}
+                      </td>
+                      <td className="ds-text-sm">
+                        {m.is_active ? (
+                          <span className="ds-status-active">Aktif</span>
+                        ) : (
+                          <span>Nonaktif</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </section>
 
-      <Drawer
-        open={drawerMode !== null}
-        title={drawerMode === "edit" ? "Edit menu / resep" : "Tambah menu"}
-        description="Nama menu dan komposisi bahan per paket."
+      <EntityDrawer
+        open={drawer !== null}
+        title={drawer === "edit" ? "Edit menu / resep" : "Tambah menu"}
+        description="Nama menu dan bahan yang terpakai untuk satu paket."
         onClose={closeDrawer}
+        onSubmit={() => void save()}
+        submitLabel={drawer === "edit" ? "Simpan perubahan" : "Simpan menu"}
+        saving={saving}
+        canSubmit={reason === null}
+        reason={reason}
+        error={saveError}
       >
-        {formError ? <p className="error">{formError}</p> : null}
-        <form className="form" onSubmit={(e) => void onSubmit(e)}>
-          <div className="field">
-            <label className="label" htmlFor="menu-name">
-              Nama menu
-            </label>
-            <input
-              id="menu-name"
-              className="input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoFocus
-            />
+        <label className="ds-field">
+          Nama menu
+          <input
+            className="ds-input"
+            type="text"
+            value={name}
+            autoFocus={drawer === "create"}
+            aria-invalid={sameName ? true : undefined}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+
+        <div className="ds-recipe" role="group" aria-labelledby="recipe-title">
+          <p id="recipe-title" className="ds-recipe-title">
+            Bahan per paket
+          </p>
+          <div className="ds-recipe-head" aria-hidden="true">
+            <span>Bahan</span>
+            <span>Qty per paket</span>
+            <span />
           </div>
-          {lines.map((line, idx) => (
-            <div key={idx} className="form-grid form-grid-2">
-              <div className="field">
-                <label className="label">Bahan</label>
+          {rows.map((row, i) => {
+            const it = itemById.get(row.item_id);
+            const unit = it ? (unitCode.get(it.unit_id) ?? "") : "";
+            const qtyBad = row.qty !== "" && !(Number(row.qty) > 0);
+            return (
+              <div key={row.key} className="ds-recipe-row">
                 <select
-                  className="input select"
-                  value={line.item_id}
-                  onChange={(e) => {
-                    const next = [...lines];
-                    next[idx] = { ...next[idx], item_id: e.target.value };
-                    setLines(next);
-                  }}
-                  required
+                  className="ds-select"
+                  aria-label={`Bahan ${i + 1}`}
+                  value={row.item_id}
+                  onChange={(e) => updateRow(row.key, { item_id: e.target.value })}
                 >
-                  <option value="">— pilih —</option>
-                  {itemOptions.map((it) => (
-                    <option key={it.id} value={it.id}>
-                      {it.sku} — {it.name}
-                      {!it.is_active ? " (nonaktif)" : ""}
-                    </option>
-                  ))}
+                  <option value="">Pilih bahan…</option>
+                  {sortedItems
+                    .filter((o) => o.is_active || o.id === row.item_id)
+                    .map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                        {o.is_active ? "" : " (nonaktif)"}
+                      </option>
+                    ))}
                 </select>
-              </div>
-              <div className="field">
-                <label className="label">Qty / paket</label>
-                <input
-                  className="input"
-                  type="number"
-                  min={0.001}
-                  step="0.001"
-                  value={line.qty_per_paket}
-                  onChange={(e) => {
-                    const next = [...lines];
-                    next[idx] = { ...next[idx], qty_per_paket: e.target.value };
-                    setLines(next);
-                  }}
-                  required
+                <UnitInput
+                  unit={unit}
+                  min={0}
+                  step="any"
+                  value={row.qty}
+                  invalid={qtyBad}
+                  aria-label={`Qty per paket bahan ${i + 1}`}
+                  onChange={(e) => updateRow(row.key, { qty: e.target.value })}
                 />
+                <button
+                  type="button"
+                  className="ds-icon-btn"
+                  aria-label={`Hapus bahan ${i + 1}`}
+                  onClick={() => setRows((rs) => rs.filter((r) => r.key !== row.key))}
+                >
+                  <IconClose size={18} />
+                </button>
               </div>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() =>
-              setLines((prev) => [
-                ...prev,
-                { item_id: activeItems[0]?.id ?? "", qty_per_paket: "1" },
-              ])
-            }
-          >
-            + Bahan
+            );
+          })}
+          <button type="button" className="ds-add-row" onClick={addRow}>
+            + Tambah bahan
           </button>
-          <div className="drawer-footer">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={closeDrawer}
-            >
-              Batal
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Menyimpan…" : "Simpan"}
-            </button>
-          </div>
-        </form>
-      </Drawer>
+        </div>
+
+        {drawer === "edit" && editing ? (
+          <StatusToggle
+            key={editing.id}
+            active={editing.is_active}
+            noun="menu"
+            busy={saving}
+            consequence="Menu tidak muncul lagi di Akhir shift dan Ajukan permintaan baru. Dokumen lama tetap ada."
+            onConfirm={() => void setActive(!editing.is_active)}
+          />
+        ) : null}
+      </EntityDrawer>
 
       <Drawer
-        open={!!detail}
-        title={detail?.name ?? "Detail resep"}
-        description="Komposisi bahan per paket."
-        onClose={() => setDetail(null)}
+        open={viewing !== null}
+        title={viewing?.name ?? "Resep"}
+        description="Bahan yang terpakai untuk satu paket."
+        onClose={() => setViewing(null)}
       >
-        {detail?.lines && detail.lines.length > 0 ? (
-          <div className="data-table-wrap">
-            <table className="data-table">
+        {viewingLines.length === 0 ? (
+          <p className="ds-empty-text">Belum ada bahan.</p>
+        ) : (
+          <div className="ds-table-wrap">
+            <table className="ds-table is-tight">
               <thead>
                 <tr>
-                  <th>SKU</th>
-                  <th>Nama</th>
-                  <th>Qty</th>
-                  <th>Satuan</th>
+                  <th>Bahan</th>
+                  <th className="is-num">Qty per paket</th>
                 </tr>
               </thead>
               <tbody>
-                {detail.lines.map((l) => (
+                {viewingLines.map((l) => (
                   <tr key={l.id}>
-                    <td>{l.item_sku}</td>
-                    <td>{l.item_name}</td>
-                    <td>{l.qty_per_paket}</td>
-                    <td>{l.unit_code}</td>
+                    <td>
+                      <div className="ds-cell-stack">
+                        <span className="ds-cell-name">{l.item_name ?? "—"}</span>
+                        <span className="ds-cell-sub ds-num">{l.item_sku ?? ""}</span>
+                      </div>
+                    </td>
+                    <td className="is-num">
+                      <Qty value={l.qty_per_paket} unit={l.unit_code} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        ) : (
-          <p className="muted">Belum ada bahan.</p>
         )}
       </Drawer>
     </div>

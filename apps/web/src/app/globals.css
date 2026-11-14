@@ -4172,6 +4172,70 @@ a.ds-tile:focus-visible {
   color: var(--ds-ink);
 }
 
+/* Riwayat, Peringatan, Resep (Tahap 9) */
+
+.ds-strip-item {
+  background: var(--ds-surface-sunken);
+  color: var(--ds-ink-2);
+}
+
+.ds-strip-item strong {
+  color: var(--ds-ink);
+  font-weight: 600;
+}
+
+.ds-strip-item a {
+  color: var(--ds-navy);
+}
+
+.ds-card-foot {
+  margin: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--ds-line);
+  font-size: var(--ds-text-sm);
+  color: var(--ds-muted);
+}
+
+.ds-recipe-summary {
+  max-width: 46ch;
+  color: var(--ds-ink-2);
+  font-size: var(--ds-text-sm);
+  line-height: 1.5;
+}
+
+/* Recipe lines in the menu drawer: bahan, qty per paket, remove */
+.ds-recipe {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ds-recipe-title {
+  margin: 0;
+  font-size: var(--ds-text-md);
+  font-weight: 500;
+  color: var(--ds-ink);
+}
+
+.ds-recipe-head,
+.ds-recipe-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px var(--ds-control-h);
+  align-items: center;
+  gap: 8px;
+}
+
+.ds-recipe-head {
+  font-size: var(--ds-text-sm);
+  color: var(--ds-ink-2);
+}
+
+.ds-recipe-row .ds-select,
+.ds-recipe-row .ds-unit-input {
+  width: 100%;
+  min-width: 0;
+}
+
 /* The printable berita acara stays in the page for window.print(), hidden on screen */
 .print-only {
   display: none;
