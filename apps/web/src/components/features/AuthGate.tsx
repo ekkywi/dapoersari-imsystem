@@ -3,14 +3,13 @@
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/features/AppSidebar";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { AppTopbar } from "@/components/features/AppTopbar";
 import { ToastHost } from "@/components/ui/ToastHost";
 import { AuthUser, clearSession, getToken, getUser } from "@/lib/auth";
 import {
   canAccessOpnames,
   canAccessStockRequests,
   navKeysForRole,
-  roleLabel,
   type NavKey,
 } from "@/lib/rbac";
 
@@ -26,6 +25,7 @@ const PATH_TO_NAV: { prefix: string; key: NavKey }[] = [
   { prefix: "/app/kitchen/closings", key: "closings" },
   { prefix: "/app/history", key: "history" },
   { prefix: "/app/alerts", key: "alerts" },
+  { prefix: "/app/admin", key: "users" },
   { prefix: "/app", key: "overview" },
 ];
 
@@ -90,18 +90,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         <AppSidebar role={user.role} />
       </Suspense>
       <div className="shell-body">
-        <header className="shell-topbar">
-          <div className="shell-meta">
-            <span className="shell-meta-name">{user.full_name}</span>
-            <span className="badge badge-neutral">{roleLabel(user.role)}</span>
-          </div>
-          <div className="shell-topbar-actions">
-            <ThemeToggle />
-            <button type="button" className="btn btn-ghost" onClick={logout}>
-              Keluar
-            </button>
-          </div>
-        </header>
+        <Suspense fallback={<header className="shell-topbar" aria-hidden="true" />}>
+          <AppTopbar user={user} onLogout={logout} />
+        </Suspense>
         <div className="shell-main">{children}</div>
       </div>
       <ToastHost />

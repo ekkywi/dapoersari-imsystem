@@ -1,33 +1,34 @@
 "use client";
 
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { toastError } from "@/lib/toast";
-import { StockInDetail, warehouseApi } from "@/lib/warehouse";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { InlineAlert } from "@/components/ui/InlineAlert";
+import { LocationTag } from "@/components/ui/LocationTag";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { formatClock, formatDay, formatExpiry, formatFullStamp } from "@/lib/datetime";
+import { docNo, formatQty } from "@/lib/format";
+import { type StockInDetail, warehouseApi } from "@/lib/warehouse";
 
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-function shortId(id: string): string {
-  return id.slice(0, 8).toUpperCase();
-}
-
-export default function StockInDetailPage() {
+function StockInDetailContent() {
   const params = useParams<{ id: string }>();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params.id;
+  const wantsPrint = searchParams.get("print") === "1";
 
   const [doc, setDoc] = useState<StockInDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const printed = useRef(false);
 
   const load = useCallback(async () => {
+    setLoadError(null);
     try {
       setDoc(await warehouseApi.getStockIn(id));
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal memuat dokumen");
+      setLoadError(e instanceof Error ? e.message : "Gagal memuat dokumen");
       setDoc(null);
     } finally {
       setLoading(false);
@@ -38,50 +39,77 @@ export default function StockInDetailPage() {
     void load();
   }, [load]);
 
+  // "Simpan & cetak berita acara" lands here with ?print=1: print once, then drop the flag so a
+  // reload does not open the print dialog again. No cleanup on purpose: dropping the flag re-runs
+  // this effect, and a cleanup would cancel the print that is still pending.
+  useEffect(() => {
+    if (!doc || !wantsPrint || printed.current) return;
+    printed.current = true;
+    window.setTimeout(() => {
+      window.print();
+      router.replace(pathname);
+    }, 350);
+  }, [doc, wantsPrint, pathname, router]);
+
   if (loading) {
     return (
-      <div className="si-page">
-        <p className="muted">Memuat…</p>
+      <div className="ds-screen">
+        <p className="ds-card-hint">Memuat dokumen…</p>
       </div>
     );
   }
 
   if (!doc) {
     return (
-      <div className="si-page">
-        <p className="error">Persediaan masuk tidak ditemukan</p>
-        <Link className="btn btn-ghost" href="/app/warehouse/stock-ins">
-          Kembali
-        </Link>
+      <div className="ds-screen">
+        <InlineAlert
+          role="alert"
+          title="Dokumen persediaan masuk tidak bisa dimuat"
+          actions={
+            <>
+              <Button size="sm" variant="secondary" onClick={() => void load()}>
+                Coba lagi
+              </Button>
+              <LinkButton size="sm" variant="secondary" href="/app/warehouse/stock-ins">
+                Kembali ke daftar
+              </LinkButton>
+            </>
+          }
+        >
+          {loadError ?? "Dokumen tidak ditemukan"}. Bisa jadi dokumennya tidak ada atau tautannya
+          keliru.
+        </InlineAlert>
       </div>
     );
   }
 
-  const expiredLabel = doc.expired_at
-    ? new Date(doc.expired_at).toLocaleDateString("id-ID")
-    : "—";
+  const number = docNo("SIN", doc.id);
+  const expiredLabel = doc.expired_at ? formatExpiry(doc.expired_at) : "—";
 
   return (
-    <div className="si-page">
-      <header className="si-page-header no-print">
-        <div className="page-header-text">
-          <p className="section-label">Transaksi gudang</p>
-          <h1 className="page-title">Dokumen persediaan masuk</h1>
-          <p className="lede">No. {shortId(doc.id)}</p>
-        </div>
-        <div className="page-header-actions">
-          <Link className="btn btn-ghost" href="/app/warehouse/stock-ins">
-            Kembali
-          </Link>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => window.print()}
-          >
-            Cetak
-          </button>
-        </div>
-      </header>
+    <div className="ds-screen">
+      <div className="no-print">
+        <PageHeader
+          align="start"
+          mono
+          compactLede
+          kicker={<LocationTag location="warehouse" label="Persediaan masuk" />}
+          title={number}
+          lede={
+            <>
+              Dicatat {formatDay(doc.created_at)}{" "}
+              <span className="ds-num">{formatClock(doc.created_at)}</span> ·{" "}
+              <strong className="ds-medium">{doc.item_name}</strong>{" "}
+              <span className="ds-num">{formatQty(doc.qty, doc.unit_code)}</span>
+            </>
+          }
+          actions={
+            <Button variant="secondary" onClick={() => window.print()}>
+              Cetak berita acara
+            </Button>
+          }
+        />
+      </div>
 
       <article className="si-doc" id="stock-in-print">
         <header className="si-doc-kop">
@@ -94,11 +122,11 @@ export default function StockInDetailPage() {
         <dl className="si-doc-meta-grid">
           <div className="si-doc-meta-row">
             <dt>Nomor</dt>
-            <dd>{shortId(doc.id)}</dd>
+            <dd>{number}</dd>
           </div>
           <div className="si-doc-meta-row">
             <dt>Waktu</dt>
-            <dd>{formatDateTime(doc.created_at)}</dd>
+            <dd>{formatFullStamp(doc.created_at)}</dd>
           </div>
           <div className="si-doc-meta-row">
             <dt>Pemasok</dt>
@@ -111,9 +139,8 @@ export default function StockInDetailPage() {
         </dl>
 
         <p className="si-doc-lead">
-          Pada tanggal {formatDateTime(doc.created_at)} telah dicatat
-          penerimaan barang masuk ke gudang dengan rincian sebagaimana
-          tercantum dalam berita acara ini.
+          Pada tanggal {formatFullStamp(doc.created_at)} telah dicatat penerimaan barang masuk ke
+          gudang dengan rincian sebagaimana tercantum dalam berita acara ini.
         </p>
 
         {doc.note ? (
@@ -144,16 +171,15 @@ export default function StockInDetailPage() {
                 <td>{doc.item_name}</td>
                 <td>{doc.category_name || "—"}</td>
                 <td>{doc.unit_code}</td>
-                <td>{doc.qty}</td>
+                <td>{formatQty(doc.qty)}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <p className="si-doc-closing">
-          Status: tercatat. Saldo gudang sudah bertambah sesuai rincian di atas.
-          Demikian berita acara ini dibuat untuk dipergunakan sebagaimana
-          mestinya.
+          Status: tercatat. Saldo gudang sudah bertambah sesuai rincian di atas. Demikian berita
+          acara ini dibuat untuk dipergunakan sebagaimana mestinya.
         </p>
 
         <footer className="si-doc-foot">
@@ -172,5 +198,19 @@ export default function StockInDetailPage() {
         </footer>
       </article>
     </div>
+  );
+}
+
+export default function StockInDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="ds-screen">
+          <p className="ds-card-hint">Memuat…</p>
+        </div>
+      }
+    >
+      <StockInDetailContent />
+    </Suspense>
   );
 }

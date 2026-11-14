@@ -2,92 +2,44 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { Drawer } from "@/components/ui/Drawer";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { InlineAlert } from "@/components/ui/InlineAlert";
+import { LocationTag } from "@/components/ui/LocationTag";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatusChip } from "@/components/ui/StatusChip";
 import { getUser } from "@/lib/auth";
-import { kitchenApi, KitchenStock } from "@/lib/kitchen";
-import {
-  parseRequestFocus,
-  showOpnameMutate,
-  type RequestFocus,
-} from "@/lib/rbac";
-import { toastError, toastSuccess } from "@/lib/toast";
-import {
-  Opname,
-  opnameApi,
-  opnameLocationLabel,
-  opnameStatusLabel,
-} from "@/lib/opname";
-import { Item, Unit, WarehouseStock, warehouseApi } from "@/lib/warehouse";
+import { formatStamp, relativeTime } from "@/lib/datetime";
+import { docNo } from "@/lib/format";
+import { Opname, opnameApi } from "@/lib/opname";
+import { parseRequestFocus, showOpnameMutate } from "@/lib/rbac";
 
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+function titleFor(focus: "warehouse" | "kitchen" | null): string {
+  if (focus === "warehouse") return "Opname gudang";
+  if (focus === "kitchen") return "Opname dapur";
+  return "Opname";
 }
-
-type DraftLine = { item_id: string; physical_qty: string; system_qty: number };
 
 function OpnamesContent() {
   const searchParams = useSearchParams();
   const focus = parseRequestFocus(searchParams.get("focus"));
-  const location: RequestFocus | null = focus;
 
   const [rows, setRows] = useState<Opname[]>([]);
-  const [items, setItems] = useState<Item[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [whStocks, setWhStocks] = useState<WarehouseStock[]>([]);
-  const [kitStocks, setKitStocks] = useState<KitchenStock[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [canMutate, setCanMutate] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [note, setNote] = useState("");
-  const [draftLines, setDraftLines] = useState<DraftLine[]>([]);
-
-  const unitMap = useMemo(
-    () => Object.fromEntries(units.map((u) => [u.id, u.code])),
-    [units],
-  );
-  const itemMap = useMemo(
-    () => Object.fromEntries(items.map((it) => [it.id, it])),
-    [items],
-  );
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (r) =>
-        r.status.toLowerCase().includes(q) ||
-        (r.note ?? "").toLowerCase().includes(q) ||
-        r.id.toLowerCase().includes(q),
-    );
-  }, [rows, query]);
 
   const load = useCallback(async () => {
+    setLoadError(null);
     try {
-      const loc = location ?? undefined;
-      const [opnames, itemRows, unitRows, wh, kit] = await Promise.all([
-        opnameApi.list(loc),
-        warehouseApi.listItems(),
-        warehouseApi.listUnits(),
-        warehouseApi.listStocks(),
-        kitchenApi.listStocks(),
-      ]);
-      setRows(opnames);
-      setItems(itemRows);
-      setUnits(unitRows);
-      setWhStocks(wh);
-      setKitStocks(kit);
+      setRows(await opnameApi.list(focus ?? undefined));
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal memuat opname");
+      setLoadError(e instanceof Error ? e.message : "Gagal memuat opname");
     } finally {
       setLoading(false);
     }
-  }, [location]);
+  }, [focus]);
 
   useEffect(() => {
     const user = getUser();
@@ -95,151 +47,140 @@ function OpnamesContent() {
     void load();
   }, [load, focus]);
 
-  function systemQtyFor(itemId: string): number {
-    if (location === "kitchen") {
-      return kitStocks.find((s) => s.item_id === itemId)?.qty ?? 0;
-    }
-    return whStocks.find((s) => s.item_id === itemId)?.qty ?? 0;
-  }
+  const drafts = rows.filter((r) => r.status === "draft").length;
 
-  function openCreate() {
-    if (!location) return;
-    const activeItems = items.filter((it) => it.is_active);
-    setDraftLines(
-      activeItems.slice(0, 8).map((it) => ({
-        item_id: it.id,
-        physical_qty: String(systemQtyFor(it.id)),
-        system_qty: systemQtyFor(it.id),
-      })),
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        docNo("OPN", r.id).toLowerCase().includes(q) ||
+        r.id.toLowerCase().startsWith(q) ||
+        (r.note ?? "").toLowerCase().includes(q),
     );
-    setNote("");
-    setFormError(null);
-    setDrawerOpen(true);
-  }
+  }, [rows, query]);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!canMutate || !location) return;
-    const lines = draftLines
-      .map((l) => ({
-        item_id: l.item_id,
-        physical_qty: Number(l.physical_qty),
-      }))
-      .filter((l) => l.item_id && Number.isFinite(l.physical_qty) && l.physical_qty >= 0);
-    if (lines.length === 0) {
-      setFormError("Minimal satu item dengan qty fisik");
-      return;
-    }
-    setSaving(true);
-    setFormError(null);
-    try {
-      await opnameApi.create({
-        location,
-        note: note.trim() || null,
-        lines,
-      });
-      setDrawerOpen(false);
-      toastSuccess("Draf opname dibuat — konfirmasi di detail");
-      await load();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Gagal membuat opname");
-    } finally {
-      setSaving(false);
-    }
+  function detailHref(id: string): string {
+    return focus ? `/app/opnames/${id}?focus=${focus}` : `/app/opnames/${id}`;
   }
-
-  const title =
-    location === "warehouse"
-      ? "Opname gudang"
-      : location === "kitchen"
-        ? "Opname dapur"
-        : "Opname";
-  const sectionLabel =
-    location === "warehouse"
-      ? "Gudang"
-      : location === "kitchen"
-        ? "Dapur"
-        : "Inventaris";
 
   return (
-    <div className="si-page">
-      <header className="si-page-header">
-        <div className="page-header-text">
-          <p className="section-label">{sectionLabel}</p>
-          <h1 className="page-title">{title}</h1>
-          <p className="lede">Hitung fisik versus persediaan sistem.</p>
-        </div>
-      </header>
+    <div className="ds-screen">
+      <PageHeader
+        kicker={
+          focus ? (
+            <LocationTag
+              location={focus}
+              label={focus === "warehouse" ? "Pintu gudang" : "Pintu dapur"}
+            />
+          ) : undefined
+        }
+        title={titleFor(focus)}
+        lede="Hitung fisik versus persediaan sistem. Stok baru berubah setelah dokumen dikonfirmasi."
+        actions={
+          canMutate && focus ? (
+            <LinkButton href={`/app/opnames/new?focus=${focus}`}>Buat opname</LinkButton>
+          ) : undefined
+        }
+      />
 
-      <div className="si-toolbar">
-        <div className="si-toolbar-meta">
-          <p className="si-count">
-            <strong>{filtered.length}</strong> dari {rows.length} dokumen
-          </p>
-          <input
-            className="input si-search"
-            type="search"
-            placeholder="Cari status / catatan…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <div className="si-toolbar-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => void load()}>
-            Muat ulang
-          </button>
-          {canMutate && location ? (
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
-              Buat opname
-            </button>
-          ) : null}
-        </div>
-      </div>
+      {drafts > 0 ? (
+        <InlineAlert tone="info" title={`${drafts} draf opname belum dikonfirmasi`}>
+          Stok sistem belum berubah sampai drafnya dikonfirmasi. Buka drafnya untuk meninjau
+          selisih.
+        </InlineAlert>
+      ) : null}
 
-      <section className="si-table-card">
+      {loadError ? (
+        <InlineAlert
+          role="alert"
+          title="Daftar opname belum bisa dimuat"
+          actions={
+            <Button size="sm" variant="secondary" onClick={() => void load()}>
+              Coba lagi
+            </Button>
+          }
+        >
+          {loadError}. Periksa koneksi Anda, lalu coba lagi.
+        </InlineAlert>
+      ) : null}
+
+      <section className="ds-card ds-card-clip">
+        <div className="ds-toolbar">
+          <p className="ds-card-hint">Terbaru di atas.</p>
+          <label className="ds-search">
+            Cari
+            <input
+              type="search"
+              placeholder="No. dokumen atau catatan"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+        </div>
+
         {loading ? (
-          <div className="si-empty">
-            <p className="muted">Memuat data…</p>
+          <div className="ds-empty">
+            <p className="ds-empty-text">Memuat opname…</p>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="si-empty">
-            <p className="si-empty-title">Belum ada opname</p>
-            <p className="si-empty-desc">Belum ada dokumen opname.</p>
+        ) : visible.length === 0 ? (
+          <div className="ds-empty">
+            <p className="ds-empty-title">{query.trim() ? "Tidak ada yang cocok" : "Belum ada opname"}</p>
+            <p className="ds-empty-text">
+              {query.trim()
+                ? "Coba nomor dokumen atau kata di catatan yang lain."
+                : canMutate
+                  ? "Mulai dengan membuat opname baru."
+                  : "Belum ada dokumen opname."}
+            </p>
           </div>
         ) : (
-          <div className="data-table-wrap">
-            <table className="data-table">
+          <div className="ds-table-wrap">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>Waktu</th>
+                  <th>Dokumen</th>
                   <th>Lokasi</th>
                   <th>Status</th>
                   <th>Catatan</th>
-                  <th />
+                  <th>
+                    <span className="ds-sr-only">Aksi</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r) => (
+                {visible.map((r) => (
                   <tr key={r.id}>
-                    <td>{formatDateTime(r.created_at)}</td>
-                    <td>{opnameLocationLabel(r.location)}</td>
-                    <td>
-                      <span className="badge badge-neutral">
-                        {opnameStatusLabel(r.status)}
-                      </span>
+                    <td className="ds-nowrap">
+                      <div className="ds-cell-stack">
+                        <span className="ds-cell-main">{relativeTime(r.created_at)}</span>
+                        <span className="ds-cell-sub ds-num">{formatStamp(r.created_at)}</span>
+                      </div>
                     </td>
-                    <td>{r.note || "—"}</td>
                     <td>
-                      <Link
-                        className="btn btn-ghost"
-                        href={
-                          focus
-                            ? `/app/opnames/${r.id}?focus=${focus}`
-                            : `/app/opnames/${r.id}`
-                        }
-                      >
-                        Buka
+                      <Link className="ds-doc-link ds-num" href={detailHref(r.id)}>
+                        {docNo("OPN", r.id)}
                       </Link>
+                    </td>
+                    <td className="ds-nowrap">
+                      <LocationTag
+                        location={r.location === "kitchen" ? "kitchen" : "warehouse"}
+                        size="sm"
+                      />
+                    </td>
+                    <td className="ds-nowrap">
+                      <StatusChip kind="opname" status={r.status} />
+                    </td>
+                    <td className="ds-ink-2">{r.note || "—"}</td>
+                    <td className="ds-cell-right">
+                      <LinkButton
+                        href={detailHref(r.id)}
+                        size="sm"
+                        variant={r.status === "draft" && canMutate ? "primary" : "secondary"}
+                      >
+                        {r.status === "draft" && canMutate ? "Tinjau" : "Buka"}
+                      </LinkButton>
                     </td>
                   </tr>
                 ))}
@@ -248,85 +189,6 @@ function OpnamesContent() {
           </div>
         )}
       </section>
-
-      <Drawer
-        open={drawerOpen}
-        title="Buat opname"
-        description="Isi qty fisik per item."
-        onClose={() => setDrawerOpen(false)}
-      >
-        {formError ? <p className="error">{formError}</p> : null}
-        <form className="form" onSubmit={onSubmit}>
-          {draftLines.map((line, idx) => {
-            const item = itemMap[line.item_id];
-            const unit = item ? unitMap[item.unit_id] ?? "" : "";
-            return (
-              <div key={line.item_id || idx} className="field">
-                <label className="label">
-                  {item ? `${item.sku} — ${item.name}` : "Item"} ({unit}) · sistem{" "}
-                  {line.system_qty}
-                </label>
-                <input
-                  className="input"
-                  type="number"
-                  min={0}
-                  step="0.001"
-                  value={line.physical_qty}
-                  onChange={(e) => {
-                    const next = [...draftLines];
-                    next[idx] = { ...line, physical_qty: e.target.value };
-                    setDraftLines(next);
-                  }}
-                />
-              </div>
-            );
-          })}
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => {
-              const used = new Set(draftLines.map((l) => l.item_id));
-              const nextItem = items.find(
-                (it) => it.is_active && !used.has(it.id),
-              );
-              if (!nextItem) {
-                toastError("Semua item sudah ditambahkan");
-                return;
-              }
-              setDraftLines((prev) => [
-                ...prev,
-                {
-                  item_id: nextItem.id,
-                  physical_qty: String(systemQtyFor(nextItem.id)),
-                  system_qty: systemQtyFor(nextItem.id),
-                },
-              ]);
-            }}
-          >
-            + Tambah item
-          </button>
-          <div className="field">
-            <label className="label">Catatan</label>
-            <input
-              className="input"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
-          <div className="drawer-footer">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setDrawerOpen(false)}
-            >
-              Batal
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Menyimpan…" : "Simpan draf"}
-            </button>
-          </div>
-        </form>
-      </Drawer>
     </div>
   );
 }
@@ -335,10 +197,8 @@ export default function OpnamesPage() {
   return (
     <Suspense
       fallback={
-        <div className="si-page">
-          <div className="si-empty">
-            <p className="muted">Memuat…</p>
-          </div>
+        <div className="ds-screen">
+          <p className="ds-card-hint">Memuat…</p>
         </div>
       }
     >

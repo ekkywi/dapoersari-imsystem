@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import {
   activityActionLabel,
   ActivityEntry,
@@ -49,9 +50,15 @@ function entityHref(
   return null;
 }
 
-export default function HistoryPage() {
+function HistoryContent() {
+  const searchParams = useSearchParams();
+  // Linked from Persediaan: /app/history?item_id=…&location=…
+  const itemId = searchParams.get("item_id") ?? "";
+  const locationParam = searchParams.get("location");
   const [tab, setTab] = useState<"stock" | "activity">("stock");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState(
+    locationParam === "warehouse" || locationParam === "kitchen" ? locationParam : "",
+  );
   const [stockRows, setStockRows] = useState<StockHistoryEntry[]>([]);
   const [activityRows, setActivityRows] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +70,7 @@ export default function HistoryPage() {
         setStockRows(
           await historyApi.listStock({
             location: location || undefined,
+            item_id: itemId || undefined,
             limit: 100,
           }),
         );
@@ -74,7 +82,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [tab, location]);
+  }, [tab, location, itemId]);
 
   useEffect(() => {
     void load();
@@ -89,6 +97,14 @@ export default function HistoryPage() {
           <p className="lede">Mutasi persediaan dan log aktivitas.</p>
         </div>
       </header>
+
+      {itemId && tab === "stock" ? (
+        <p className="muted">
+          Menampilkan mutasi satu item
+          {stockRows[0] ? `: ${stockRows[0].item_sku} — ${stockRows[0].item_name}` : ""}.{" "}
+          <Link href="/app/history">Tampilkan semua</Link>
+        </p>
+      ) : null}
 
       <div className="si-filter-row" role="group" aria-label="Jenis riwayat">
         <button
@@ -235,5 +251,19 @@ export default function HistoryPage() {
         )}
       </section>
     </div>
+  );
+}
+
+export default function HistoryPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="si-page">
+          <p className="muted">Memuat…</p>
+        </div>
+      }
+    >
+      <HistoryContent />
+    </Suspense>
   );
 }

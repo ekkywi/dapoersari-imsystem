@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Drawer } from "@/components/ui/Drawer";
+import { InlineAlert } from "@/components/ui/InlineAlert";
 import { getUser } from "@/lib/auth";
 import { kitchenApi, Menu } from "@/lib/kitchen";
 import { canMutateKitchen } from "@/lib/rbac";
@@ -26,6 +27,10 @@ export default function MenusPage() {
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [editing, setEditing] = useState<Menu | null>(null);
   const [detail, setDetail] = useState<Menu | null>(null);
+  // Status change is confirmed in the row itself, never with window.confirm.
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const activeItems = useMemo(
     () => items.filter((it) => it.is_active),
@@ -142,18 +147,20 @@ export default function MenusPage() {
   async function toggleActive(m: Menu) {
     if (!canWrite) return;
     const next = !m.is_active;
-    const ok = window.confirm(
-      next
-        ? `Aktifkan ${m.name}?`
-        : `Nonaktifkan ${m.name}? Menu tidak dipakai di penutupan baru.`,
-    );
-    if (!ok) return;
+    setBusyId(m.id);
+    setStatusError(null);
     try {
       await kitchenApi.patchMenu(m.id, { is_active: next });
       toastSuccess(next ? "Menu diaktifkan" : "Menu dinonaktifkan");
+      // Reload first, close the confirmation after: otherwise the row flashes back to its old state.
       await load();
+      setConfirmId(null);
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal mengubah status");
+      setStatusError(
+        `${m.name}: ${e instanceof Error ? e.message : "Gagal mengubah status."} Status menu belum berubah.`,
+      );
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -206,6 +213,12 @@ export default function MenusPage() {
         </div>
       </div>
 
+      {statusError ? (
+        <InlineAlert tone="danger" title="Status menu tidak berubah" role="alert">
+          {statusError}
+        </InlineAlert>
+      ) : null}
+
       <section className="si-table-card">
         {loading ? (
           <div className="si-empty">
@@ -247,7 +260,40 @@ export default function MenusPage() {
                       >
                         Detail
                       </button>
-                      {canWrite ? (
+                      {canWrite && confirmId === m.id ? (
+                        <div
+                          role="group"
+                          aria-label={`Konfirmasi ubah status ${m.name}`}
+                        >
+                          <p className="muted">
+                            {m.is_active
+                              ? `Nonaktifkan ${m.name}? Menu tidak dipakai di penutupan baru.`
+                              : `Aktifkan ${m.name}? Menu bisa dipilih lagi di penutupan baru.`}
+                          </p>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => {
+                              setConfirmId(null);
+                              setStatusError(null);
+                            }}
+                          >
+                            Batal
+                          </button>{" "}
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            disabled={busyId === m.id}
+                            onClick={() => void toggleActive(m)}
+                          >
+                            {busyId === m.id
+                              ? "Memproses…"
+                              : m.is_active
+                                ? "Ya, nonaktifkan"
+                                : "Ya, aktifkan"}
+                          </button>
+                        </div>
+                      ) : canWrite ? (
                         <>
                           {" "}
                           <button
@@ -260,7 +306,10 @@ export default function MenusPage() {
                           <button
                             type="button"
                             className="btn btn-ghost"
-                            onClick={() => void toggleActive(m)}
+                            onClick={() => {
+                              setStatusError(null);
+                              setConfirmId(m.id);
+                            }}
                           >
                             {m.is_active ? "Nonaktifkan" : "Aktifkan"}
                           </button>

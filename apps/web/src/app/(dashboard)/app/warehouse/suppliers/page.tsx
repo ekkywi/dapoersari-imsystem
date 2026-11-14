@@ -1,39 +1,39 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Drawer } from "@/components/ui/Drawer";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { EntityDrawer } from "@/components/features/EntityDrawer";
+import { MasterHeader } from "@/components/features/MasterHeader";
+import { StatusToggle } from "@/components/features/StatusToggle";
+import { Button } from "@/components/ui/Button";
+import { InlineAlert } from "@/components/ui/InlineAlert";
 import { getUser } from "@/lib/auth";
-import { toastError, toastSuccess } from "@/lib/toast";
-import { Supplier, canMutateWarehouse, warehouseApi } from "@/lib/warehouse";
+import { explainMasterError } from "@/lib/master";
+import { canMutateWarehouse } from "@/lib/rbac";
+import { toastSuccess } from "@/lib/toast";
+import { type Supplier, warehouseApi } from "@/lib/warehouse";
 
 export default function SuppliersPage() {
-  const [rows, setRows] = useState<Supplier[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [canWrite, setCanWrite] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [drawer, setDrawer] = useState<"create" | "edit" | null>(null);
+  const [editing, setEditing] = useState<Supplier | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [canWrite, setCanWrite] = useState(false);
-  const [drawerMode, setDrawerMode] = useState<"create" | "edit" | null>(null);
-  const [editing, setEditing] = useState<Supplier | null>(null);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        (s.phone ?? "").toLowerCase().includes(q),
-    );
-  }, [rows, query]);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoadError(null);
     try {
-      setRows(await warehouseApi.listSuppliers());
+      setSuppliers(await warehouseApi.listSuppliers());
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal memuat pemasok");
+      setLoadError(e instanceof Error ? e.message : "Gagal memuat pemasok");
     } finally {
       setLoading(false);
     }
@@ -45,177 +45,172 @@ export default function SuppliersPage() {
     void load();
   }, [load]);
 
-  function closeDrawer() {
-    setDrawerMode(null);
-    setEditing(null);
-    setFormError(null);
-  }
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return [...suppliers]
+      .sort((a, b) => Number(b.is_active) - Number(a.is_active) || a.name.localeCompare(b.name, "id"))
+      .filter(
+        (s) =>
+          !q ||
+          s.name.toLowerCase().includes(q) ||
+          (s.phone ?? "").toLowerCase().includes(q) ||
+          (s.note ?? "").toLowerCase().includes(q),
+      );
+  }, [suppliers, query]);
 
   function openCreate() {
     setEditing(null);
     setName("");
     setPhone("");
     setNote("");
-    setFormError(null);
-    setDrawerMode("create");
+    setSaveError(null);
+    setDrawer("create");
   }
 
   function openEdit(s: Supplier) {
+    if (!canWrite) return;
     setEditing(s);
     setName(s.name);
     setPhone(s.phone ?? "");
     setNote(s.note ?? "");
-    setFormError(null);
-    setDrawerMode("edit");
+    setSaveError(null);
+    setDrawer("edit");
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!canWrite) return;
+  function closeDrawer() {
+    setDrawer(null);
+    setEditing(null);
+    setSaveError(null);
+  }
+
+  const reason = name.trim() === "" ? "Nama pemasok wajib diisi." : null;
+
+  async function save() {
+    if (reason !== null) return;
     setSaving(true);
-    setFormError(null);
+    setSaveError(null);
     try {
-      if (drawerMode === "create") {
-        await warehouseApi.createSupplier({
-          name,
-          phone: phone.trim() || null,
-          note: note.trim() || null,
-        });
-        toastSuccess("Pemasok berhasil ditambahkan");
-      } else if (drawerMode === "edit" && editing) {
-        await warehouseApi.patchSupplier(editing.id, {
-          name,
-          phone: phone.trim() || null,
-          note: note.trim() || null,
-        });
+      const body = {
+        name: name.trim(),
+        phone: phone.trim() || null,
+        note: note.trim() || null,
+      };
+      if (drawer === "create") {
+        await warehouseApi.createSupplier(body);
+        toastSuccess(`${body.name} ditambahkan`);
+      } else if (editing) {
+        await warehouseApi.patchSupplier(editing.id, body);
         toastSuccess("Pemasok diperbarui");
       }
       closeDrawer();
       await load();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Gagal menyimpan");
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setSaveError(explainMasterError(e instanceof Error ? e.message : "Gagal menyimpan", "nama"));
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleActive(s: Supplier) {
-    if (!canWrite) return;
-    const next = !s.is_active;
-    const ok = window.confirm(
-      next ? `Aktifkan ${s.name}?` : `Nonaktifkan ${s.name}?`,
-    );
-    if (!ok) return;
+  async function setActive(next: boolean) {
+    if (!editing) return;
+    setSaving(true);
+    setSaveError(null);
     try {
-      await warehouseApi.patchSupplier(s.id, { is_active: next });
+      await warehouseApi.patchSupplier(editing.id, { is_active: next });
       toastSuccess(next ? "Pemasok diaktifkan" : "Pemasok dinonaktifkan");
+      closeDrawer();
       await load();
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal mengubah status");
+      setSaveError(e instanceof Error ? e.message : "Gagal mengubah status");
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
-    <div className="si-page">
-      <header className="si-page-header">
-        <div className="page-header-text">
-          <p className="section-label">Master gudang</p>
-          <h1 className="page-title">Pemasok</h1>
-          <p className="lede">Daftar pemasok.</p>
-        </div>
-      </header>
+    <div className="ds-screen">
+      <MasterHeader
+        active="suppliers"
+        refreshKey={refreshKey}
+        action={canWrite ? { label: "Tambah pemasok", onClick: openCreate } : undefined}
+      />
 
-      <div className="si-toolbar">
-        <div className="si-toolbar-meta">
-          <p className="si-count">
-            <strong>{filtered.length}</strong> dari {rows.length} data
-          </p>
-          <input
-            className="input si-search"
-            type="search"
-            placeholder="Cari nama atau telepon…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Cari pemasok"
-          />
-        </div>
-        <div className="si-toolbar-actions">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => void load()}
-          >
-            Muat ulang
-          </button>
-          {canWrite ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={openCreate}
-            >
-              Tambah pemasok
-            </button>
-          ) : null}
-        </div>
-      </div>
+      {loadError ? (
+        <InlineAlert
+          role="alert"
+          title="Daftar pemasok belum bisa dimuat"
+          actions={
+            <Button size="sm" variant="secondary" onClick={() => void load()}>
+              Coba lagi
+            </Button>
+          }
+        >
+          {loadError}. Periksa koneksi Anda, lalu coba lagi.
+        </InlineAlert>
+      ) : null}
 
-      <section className="si-table-card">
+      <section className="ds-card ds-card-clip">
+        <div className="ds-toolbar">
+          <label className="ds-search">
+            <span className="ds-sr-only">Cari pemasok</span>
+            <input
+              type="search"
+              placeholder="Cari nama, telepon, catatan"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          {canWrite ? <p className="ds-card-hint">Klik baris untuk mengubah</p> : null}
+        </div>
+
         {loading ? (
-          <div className="si-empty">
-            <p className="muted">Memuat data…</p>
+          <div className="ds-empty">
+            <p className="ds-empty-text">Memuat pemasok…</p>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="si-empty">
-            <p className="si-empty-title">
-              {rows.length === 0 ? "Belum ada pemasok" : "Tidak ada hasil"}
+        ) : rows.length === 0 ? (
+          <div className="ds-empty">
+            <p className="ds-empty-title">
+              {suppliers.length === 0 ? "Belum ada pemasok" : "Tidak ada yang cocok"}
             </p>
-            <p className="si-empty-desc">
-              {rows.length === 0
-                ? "Belum ada data."
-                : "Tidak cocok dengan pencarian."}
+            <p className="ds-empty-text">
+              {suppliers.length === 0
+                ? "Pemasok dipilih saat mencatat persediaan masuk. Boleh dikosongkan."
+                : "Coba nama, telepon, atau catatan yang lain."}
             </p>
           </div>
         ) : (
-          <div className="data-table-wrap">
-            <table className="data-table">
+          <div className="ds-table-wrap">
+            <table className="ds-table is-tight">
               <thead>
                 <tr>
                   <th>Nama</th>
                   <th>Telepon</th>
+                  <th>Catatan</th>
                   <th>Status</th>
-                  {canWrite ? <th>Aksi</th> : null}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s) => (
-                  <tr key={s.id}>
-                    <td>{s.name}</td>
-                    <td>{s.phone || "—"}</td>
+                {rows.map((s) => (
+                  <tr
+                    key={s.id}
+                    className={`${canWrite ? "is-clickable" : ""}${s.is_active ? "" : " is-inactive"}`.trim() || undefined}
+                    onClick={canWrite ? () => openEdit(s) : undefined}
+                  >
                     <td>
-                      {s.is_active ? (
-                        <span className="badge badge-success">Aktif</span>
+                      {canWrite ? (
+                        <button type="button" className="ds-row-btn" aria-label={`Ubah pemasok ${s.name}`}>
+                          {s.name}
+                        </button>
                       ) : (
-                        <span className="badge badge-neutral">Nonaktif</span>
+                        <strong>{s.name}</strong>
                       )}
                     </td>
-                    {canWrite ? (
-                      <td>
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => openEdit(s)}
-                        >
-                          Edit
-                        </button>{" "}
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => void toggleActive(s)}
-                        >
-                          {s.is_active ? "Nonaktifkan" : "Aktifkan"}
-                        </button>
-                      </td>
-                    ) : null}
+                    <td className="ds-num">{s.phone || "—"}</td>
+                    <td className="ds-ink-2">{s.note || "—"}</td>
+                    <td className="ds-text-sm">
+                      {s.is_active ? <span className="ds-status-active">Aktif</span> : <span>Nonaktif</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -224,63 +219,58 @@ export default function SuppliersPage() {
         )}
       </section>
 
-      <Drawer
-        open={drawerMode !== null}
-        title={drawerMode === "edit" ? "Edit pemasok" : "Tambah pemasok"}
-        description="Nama dan kontak."
+      <EntityDrawer
+        open={drawer !== null}
+        title={drawer === "edit" ? "Edit pemasok" : "Tambah pemasok"}
+        description="Nama dan kontak. Dipilih saat mencatat persediaan masuk."
         onClose={closeDrawer}
+        onSubmit={() => void save()}
+        submitLabel={drawer === "edit" ? "Simpan perubahan" : "Simpan pemasok"}
+        saving={saving}
+        canSubmit={reason === null}
+        reason={reason}
+        error={saveError}
       >
-        {formError ? <p className="error">{formError}</p> : null}
-        <form className="form" onSubmit={(e) => void onSubmit(e)}>
-          <div className="field">
-            <label className="label" htmlFor="sup-name">
-              Nama
-            </label>
-            <input
-              id="sup-name"
-              className="input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="sup-phone">
-              Telepon
-            </label>
-            <input
-              id="sup-phone"
-              className="input"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="sup-note">
-              Catatan
-            </label>
-            <input
-              id="sup-note"
-              className="input"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
-          <div className="drawer-footer">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={closeDrawer}
-            >
-              Batal
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Menyimpan…" : "Simpan"}
-            </button>
-          </div>
-        </form>
-      </Drawer>
+        <label className="ds-field ds-field-sm">
+          Nama pemasok
+          <input
+            className="ds-input"
+            type="text"
+            value={name}
+            autoFocus
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+        <label className="ds-field ds-field-sm">
+          Telepon <span className="ds-field-hint">Opsional</span>
+          <input
+            className="ds-input ds-num"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </label>
+        <label className="ds-field ds-field-sm">
+          Catatan <span className="ds-field-hint">Opsional, misalnya hari kirim</span>
+          <input
+            className="ds-input"
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </label>
+
+        {drawer === "edit" && editing ? (
+          <StatusToggle
+            key={editing.id}
+            active={editing.is_active}
+            noun="pemasok"
+            busy={saving}
+            consequence="Pemasok tidak muncul lagi di pilihan persediaan masuk. Dokumen lama tetap mencatat namanya."
+            onConfirm={() => void setActive(!editing.is_active)}
+          />
+        ) : null}
+      </EntityDrawer>
     </div>
   );
 }
