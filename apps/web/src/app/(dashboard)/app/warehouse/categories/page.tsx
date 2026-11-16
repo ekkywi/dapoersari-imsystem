@@ -1,33 +1,42 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Drawer } from "@/components/ui/Drawer";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { EntityDrawer } from "@/components/features/EntityDrawer";
+import { MasterHeader } from "@/components/features/MasterHeader";
+import { Button } from "@/components/ui/Button";
+import { InlineAlert } from "@/components/ui/InlineAlert";
 import { getUser } from "@/lib/auth";
-import { toastError, toastSuccess } from "@/lib/toast";
-import { Category, canMutateWarehouse, warehouseApi } from "@/lib/warehouse";
+import { explainMasterError } from "@/lib/master";
+import { canMutateWarehouse } from "@/lib/rbac";
+import { toastSuccess } from "@/lib/toast";
+import { type Category, type Item, warehouseApi } from "@/lib/warehouse";
 
 export default function CategoriesPage() {
-  const [rows, setRows] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [query, setQuery] = useState("");
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [canWrite, setCanWrite] = useState(false);
-  const [drawerMode, setDrawerMode] = useState<"create" | "edit" | null>(null);
-  const [editing, setEditing] = useState<Category | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((c) => c.name.toLowerCase().includes(q));
-  }, [rows, query]);
+  const [drawer, setDrawer] = useState<"create" | "edit" | null>(null);
+  const [editing, setEditing] = useState<Category | null>(null);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoadError(null);
     try {
-      setRows(await warehouseApi.listCategories());
+      const [catRows, itemRows] = await Promise.all([
+        warehouseApi.listCategories(),
+        warehouseApi.listItems(),
+      ]);
+      setCategories(catRows);
+      setItems(itemRows);
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal memuat kategori");
+      setLoadError(e instanceof Error ? e.message : "Gagal memuat kategori");
     } finally {
       setLoading(false);
     }
@@ -39,132 +48,146 @@ export default function CategoriesPage() {
     void load();
   }, [load]);
 
-  function closeDrawer() {
-    setDrawerMode(null);
-    setEditing(null);
-    setFormError(null);
-  }
+  const usage = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const it of items) {
+      if (it.category_id) m.set(it.category_id, (m.get(it.category_id) ?? 0) + 1);
+    }
+    return m;
+  }, [items]);
+
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return [...categories]
+      .sort((a, b) => a.name.localeCompare(b.name, "id"))
+      .filter((c) => !q || c.name.toLowerCase().includes(q));
+  }, [categories, query]);
 
   function openCreate() {
     setEditing(null);
     setName("");
-    setFormError(null);
-    setDrawerMode("create");
+    setSaveError(null);
+    setDrawer("create");
   }
 
   function openEdit(c: Category) {
+    if (!canWrite) return;
     setEditing(c);
     setName(c.name);
-    setFormError(null);
-    setDrawerMode("edit");
+    setSaveError(null);
+    setDrawer("edit");
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!canWrite) return;
+  function closeDrawer() {
+    setDrawer(null);
+    setEditing(null);
+    setSaveError(null);
+  }
+
+  const nameNorm = name.trim();
+  const taken = categories.find((c) => c.name.toLowerCase() === nameNorm.toLowerCase() && c.id !== editing?.id);
+  const reason =
+    nameNorm === "" ? "Nama kategori wajib diisi." : taken ? `Kategori ${taken.name} sudah ada.` : null;
+
+  async function save() {
+    if (reason !== null) return;
     setSaving(true);
-    setFormError(null);
+    setSaveError(null);
     try {
-      if (drawerMode === "create") {
-        await warehouseApi.createCategory({ name });
-        toastSuccess("Kategori berhasil ditambahkan");
-      } else if (drawerMode === "edit" && editing) {
-        await warehouseApi.patchCategory(editing.id, { name });
+      if (drawer === "create") {
+        await warehouseApi.createCategory({ name: nameNorm });
+        toastSuccess(`Kategori ${nameNorm} ditambahkan`);
+      } else if (editing) {
+        await warehouseApi.patchCategory(editing.id, { name: nameNorm });
         toastSuccess("Kategori diperbarui");
       }
       closeDrawer();
       await load();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Gagal menyimpan");
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setSaveError(explainMasterError(e instanceof Error ? e.message : "Gagal menyimpan", "nama"));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="si-page">
-      <header className="si-page-header">
-        <div className="page-header-text">
-          <p className="section-label">Master gudang</p>
-          <h1 className="page-title">Kategori</h1>
-          <p className="lede">Kelompok item (opsional).</p>
-        </div>
-      </header>
+    <div className="ds-screen">
+      <MasterHeader
+        active="categories"
+        refreshKey={refreshKey}
+        action={canWrite ? { label: "Tambah kategori", onClick: openCreate } : undefined}
+      />
 
-      <div className="si-toolbar">
-        <div className="si-toolbar-meta">
-          <p className="si-count">
-            <strong>{filtered.length}</strong> dari {rows.length} data
-          </p>
-          <input
-            className="input si-search"
-            type="search"
-            placeholder="Cari nama…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Cari kategori"
-          />
-        </div>
-        <div className="si-toolbar-actions">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => void load()}
-          >
-            Muat ulang
-          </button>
-          {canWrite ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={openCreate}
-            >
-              Tambah kategori
-            </button>
-          ) : null}
-        </div>
-      </div>
+      {loadError ? (
+        <InlineAlert
+          role="alert"
+          title="Daftar kategori belum bisa dimuat"
+          actions={
+            <Button size="sm" variant="secondary" onClick={() => void load()}>
+              Coba lagi
+            </Button>
+          }
+        >
+          {loadError}. Periksa koneksi Anda, lalu coba lagi.
+        </InlineAlert>
+      ) : null}
 
-      <section className="si-table-card">
+      <section className="ds-card ds-card-clip">
+        <div className="ds-toolbar">
+          <label className="ds-search">
+            <span className="ds-sr-only">Cari kategori</span>
+            <input
+              type="search"
+              placeholder="Cari nama kategori"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          {canWrite ? <p className="ds-card-hint">Klik baris untuk mengubah</p> : null}
+        </div>
+
         {loading ? (
-          <div className="si-empty">
-            <p className="muted">Memuat data…</p>
+          <div className="ds-empty">
+            <p className="ds-empty-text">Memuat kategori…</p>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="si-empty">
-            <p className="si-empty-title">
-              {rows.length === 0 ? "Belum ada kategori" : "Tidak ada hasil"}
+        ) : rows.length === 0 ? (
+          <div className="ds-empty">
+            <p className="ds-empty-title">
+              {categories.length === 0 ? "Belum ada kategori" : "Tidak ada yang cocok"}
             </p>
-            <p className="si-empty-desc">
-              {rows.length === 0
-                ? "Belum ada data."
-                : "Tidak cocok dengan pencarian."}
+            <p className="ds-empty-text">
+              {categories.length === 0
+                ? "Kategori mengelompokkan item, misalnya Protein atau Bumbu. Boleh dikosongkan."
+                : "Coba nama yang lain."}
             </p>
           </div>
         ) : (
-          <div className="data-table-wrap">
-            <table className="data-table">
+          <div className="ds-table-wrap">
+            <table className="ds-table is-tight">
               <thead>
                 <tr>
                   <th>Nama</th>
-                  {canWrite ? <th>Aksi</th> : null}
+                  <th className="is-num">Jumlah item</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    {canWrite ? (
-                      <td>
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => openEdit(c)}
-                        >
-                          Edit
+                {rows.map((c) => (
+                  <tr
+                    key={c.id}
+                    className={canWrite ? "is-clickable" : undefined}
+                    onClick={canWrite ? () => openEdit(c) : undefined}
+                  >
+                    <td>
+                      {canWrite ? (
+                        <button type="button" className="ds-row-btn" aria-label={`Ubah kategori ${c.name}`}>
+                          {c.name}
                         </button>
-                      </td>
-                    ) : null}
+                      ) : (
+                        <strong>{c.name}</strong>
+                      )}
+                    </td>
+                    <td className="is-num ds-num">{usage.get(c.id) ?? 0}</td>
                   </tr>
                 ))}
               </tbody>
@@ -173,42 +196,33 @@ export default function CategoriesPage() {
         )}
       </section>
 
-      <Drawer
-        open={drawerMode !== null}
-        title={drawerMode === "edit" ? "Edit kategori" : "Tambah kategori"}
-        description="Nama kategori."
+      <EntityDrawer
+        open={drawer !== null}
+        title={drawer === "edit" ? "Edit kategori" : "Tambah kategori"}
+        description="Mengelompokkan item di daftar dan lembar opname."
         onClose={closeDrawer}
+        onSubmit={() => void save()}
+        submitLabel={drawer === "edit" ? "Simpan perubahan" : "Simpan kategori"}
+        saving={saving}
+        canSubmit={reason === null}
+        reason={reason}
+        error={saveError}
       >
-        {formError ? <p className="error">{formError}</p> : null}
-        <form className="form" onSubmit={(e) => void onSubmit(e)}>
-          <div className="field">
-            <label className="label" htmlFor="cat-name">
-              Nama
-            </label>
-            <input
-              id="cat-name"
-              className="input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Sayuran"
-              required
-              autoFocus
-            />
-          </div>
-          <div className="drawer-footer">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={closeDrawer}
-            >
-              Batal
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Menyimpan…" : "Simpan"}
-            </button>
-          </div>
-        </form>
-      </Drawer>
+        <label className="ds-field ds-field-sm">
+          Nama kategori
+          <input
+            className="ds-input"
+            type="text"
+            value={name}
+            autoFocus
+            aria-invalid={taken ? true : undefined}
+            onChange={(e) => setName(e.target.value)}
+          />
+          {taken ? (
+            <span className="ds-field-hint ds-note-danger">Kategori ini sudah ada.</span>
+          ) : null}
+        </label>
+      </EntityDrawer>
     </div>
   );
 }

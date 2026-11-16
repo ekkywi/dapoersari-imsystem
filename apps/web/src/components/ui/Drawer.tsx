@@ -8,6 +8,8 @@ type DrawerProps = {
   description?: string;
   onClose: () => void;
   children: React.ReactNode;
+  /** Optional pinned footer (Batal / Simpan). Existing callers keep their buttons inside the body. */
+  footer?: React.ReactNode;
 };
 
 export function Drawer({
@@ -16,6 +18,7 @@ export function Drawer({
   description,
   onClose,
   children,
+  footer,
 }: DrawerProps) {
   useEffect(() => {
     if (!open) return;
@@ -58,13 +61,22 @@ export function Drawer({
           </div>
           <button
             type="button"
-            className="btn btn-ghost"
+            className="drawer-close"
+            aria-label="Tutup"
             onClick={onClose}
           >
-            Tutup
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M6 6l12 12M18 6 6 18"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </header>
         <div className="drawer-body">{children}</div>
+        {footer ? <div className="ds-drawer-footer">{footer}</div> : null}
       </aside>
     </div>
   );

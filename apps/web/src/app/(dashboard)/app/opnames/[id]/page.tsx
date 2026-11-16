@@ -1,15 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+<<<<<<< HEAD
 import { ApiError } from "@/lib/api";
+=======
+import { Button, LinkButton } from "@/components/ui/Button";
+import { InlineAlert } from "@/components/ui/InlineAlert";
+import { LocationTag } from "@/components/ui/LocationTag";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { StepPills } from "@/components/ui/StepPills";
+import { FilterChips } from "@/components/ui/Tabs";
+>>>>>>> origin/feat/web-redesign
 import { getUser } from "@/lib/auth";
-import {
-  parseRequestFocus,
-  showOpnameMutate,
-} from "@/lib/rbac";
-import { toastError, toastSuccess } from "@/lib/toast";
+import { formatClock, formatDay, formatFullStamp, formatStamp } from "@/lib/datetime";
+import { docNo, formatQty, signedQty } from "@/lib/format";
+import { kitchenApi } from "@/lib/kitchen";
 import {
   Opname,
   OpnameLine,
@@ -17,21 +24,36 @@ import {
   opnameLocationLabel,
   opnameStatusLabel,
 } from "@/lib/opname";
-
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-function shortId(id: string): string {
-  return id.slice(0, 8).toUpperCase();
-}
+import { type VarianceKind, summarize } from "@/lib/opname-calc";
+import { parseRequestFocus, showOpnameMutate } from "@/lib/rbac";
+import { round3 } from "@/lib/request-stock";
+import { toastSuccess } from "@/lib/toast";
+import { warehouseApi } from "@/lib/warehouse";
 
 function varianceClass(v: number): string {
   if (v > 0) return "doc-variance is-plus";
   if (v < 0) return "doc-variance is-minus";
   return "doc-variance";
+}
+
+function kindOf(l: OpnameLine): VarianceKind {
+  return l.variance > 0 ? "over" : l.variance < 0 ? "under" : "match";
+}
+
+function explainConfirmError(message: string): { title: string; body: string } {
+  if (message.includes("status opname tidak sesuai")) {
+    return {
+      title: "Opname ini sudah diproses",
+      body: "Dokumen ini sudah dikonfirmasi atau dibatalkan oleh orang lain. Muat ulang untuk melihat keadaan terbarunya.",
+    };
+  }
+  if (message.includes("akses ditolak")) {
+    return {
+      title: "Peran Anda tidak bisa mengonfirmasi opname ini",
+      body: "Opname gudang dikonfirmasi Admin Gudang, opname dapur oleh Admin Dapur. Super Admin bisa keduanya.",
+    };
+  }
+  return { title: "Konfirmasi belum berhasil", body: message };
 }
 
 function OpnameDetailContent() {
@@ -41,66 +63,75 @@ function OpnameDetailContent() {
   const focus = parseRequestFocus(searchParams.get("focus"));
 
   const [doc, setDoc] = useState<Opname | null>(null);
+  const [live, setLive] = useState<Map<string, number> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [canMutate, setCanMutate] = useState(false);
   const [onlyVariance, setOnlyVariance] = useState(true);
 
   const listHref = focus ? `/app/opnames?focus=${focus}` : "/app/opnames";
 
   const load = useCallback(async () => {
+    setLoadError(null);
+    let opname: Opname;
     try {
-      setDoc(await opnameApi.get(id));
+      opname = await opnameApi.get(id);
+      setDoc(opname);
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Gagal memuat detail");
+      setLoadError(e instanceof Error ? e.message : "Gagal memuat dokumen");
       setDoc(null);
-    } finally {
       setLoading(false);
+      return;
+    }
+    setLoading(false);
+    // Confirming overwrites stock with the counted qty, so a draft needs today's stock to spot drift.
+    if (opname.status === "draft") {
+      try {
+        const rows =
+          opname.location === "kitchen"
+            ? await kitchenApi.listStocks()
+            : await warehouseApi.listStocks();
+        setLive(new Map(rows.map((s) => [s.item_id, s.qty])));
+      } catch {
+        setLive(null);
+      }
+    } else {
+      setLive(null);
     }
   }, [id]);
-
-  useEffect(() => {
-    const user = getUser();
-    const door =
-      focus ??
-      (doc?.location === "warehouse" || doc?.location === "kitchen"
-        ? doc.location
-        : null);
-    setCanMutate(user ? showOpnameMutate(user.role, door) : false);
-  }, [focus, doc?.location]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const lines = doc?.lines ?? [];
+  useEffect(() => {
+    const user = getUser();
+    const door =
+      focus ??
+      (doc?.location === "warehouse" || doc?.location === "kitchen" ? doc.location : null);
+    setCanMutate(user ? showOpnameMutate(user.role, door) : false);
+  }, [focus, doc?.location]);
 
-  const summary = useMemo(() => {
-    const withVar = lines.filter((l) => l.variance !== 0);
-    let surplusItems = 0;
-    let deficitItems = 0;
-    for (const l of withVar) {
-      if (l.variance > 0) surplusItems += 1;
-      if (l.variance < 0) deficitItems += 1;
-    }
-    return {
-      total: lines.length,
-      withVariance: withVar.length,
-      matched: lines.length - withVar.length,
-      surplusItems,
-      deficitItems,
-    };
-  }, [lines]);
+  const lines = useMemo(() => doc?.lines ?? [], [doc]);
+  const summary = useMemo(() => summarize(lines.map(kindOf)), [lines]);
+  const visibleLines = onlyVariance ? lines.filter((l) => l.variance !== 0) : lines;
 
-  const visibleLines: OpnameLine[] = useMemo(() => {
-    if (!onlyVariance) return lines;
-    return lines.filter((l) => l.variance !== 0);
-  }, [lines, onlyVariance]);
+  const drifted = useMemo(() => {
+    if (!live || doc?.status !== "draft") return [];
+    return lines.filter((l) => {
+      const now = live.get(l.item_id);
+      return now !== undefined && round3(now - l.system_qty) !== 0;
+    });
+  }, [live, lines, doc?.status]);
 
   async function confirm() {
     if (!doc || !canMutate) return;
     setBusy(true);
+    setActionError(null);
     try {
+<<<<<<< HEAD
       const updated: Opname = await opnameApi.confirm(doc.id);
       setDoc(updated);
       toastSuccess("Opname dikonfirmasi; persediaan disesuaikan");
@@ -112,6 +143,13 @@ function OpnameDetailContent() {
         return;
       }
       toastError(e instanceof Error ? e.message : "Gagal konfirmasi");
+=======
+      setDoc(await opnameApi.confirm(doc.id));
+      setLive(null);
+      toastSuccess("Opname dikonfirmasi; persediaan disesuaikan");
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Gagal konfirmasi");
+>>>>>>> origin/feat/web-redesign
     } finally {
       setBusy(false);
     }
@@ -119,65 +157,192 @@ function OpnameDetailContent() {
 
   if (loading) {
     return (
-      <div className="si-page">
-        <p className="muted">Memuat…</p>
+      <div className="ds-screen">
+        <p className="ds-card-hint">Memuat dokumen…</p>
       </div>
     );
   }
 
   if (!doc) {
     return (
-      <div className="si-page">
-        <p className="error">Opname tidak ditemukan</p>
-        <Link className="btn btn-ghost" href={listHref}>
-          Kembali
-        </Link>
+      <div className="ds-screen">
+        <InlineAlert
+          role="alert"
+          title="Dokumen opname tidak bisa dimuat"
+          actions={
+            <>
+              <Button size="sm" variant="secondary" onClick={() => void load()}>
+                Coba lagi
+              </Button>
+              <LinkButton size="sm" variant="secondary" href={listHref}>
+                Kembali ke daftar
+              </LinkButton>
+            </>
+          }
+        >
+          {loadError ?? "Opname tidak ditemukan"}. Bisa jadi dokumennya tidak ada atau tautannya
+          keliru.
+        </InlineAlert>
       </div>
     );
   }
 
-  const confirmedAt = doc.confirmed_at
-    ? formatDateTime(doc.confirmed_at)
-    : null;
+  const where = opnameLocationLabel(doc.location).toLowerCase();
+  const number = docNo("OPN", doc.id);
+  const isDraft = doc.status === "draft";
+  const confirmed = doc.status === "confirmed";
+  const actionInfo = actionError ? explainConfirmError(actionError) : null;
+  const location = doc.location === "kitchen" ? "kitchen" : "warehouse";
+
+  const note = isDraft
+    ? canMutate
+      ? summary.over + summary.under === 0
+        ? "Tidak ada selisih, jadi stok tidak berubah. Konfirmasi hanya menutup dokumen."
+        : `Konfirmasi menimpa stok ${where} dengan hasil hitung untuk ${summary.over + summary.under} item yang selisih. Tidak bisa dibatalkan.`
+      : `Menunggu konfirmasi petugas ${where}.`
+    : confirmed
+      ? `Stok ${where} sudah disesuaikan${doc.confirmed_at ? ` pada ${formatStamp(doc.confirmed_at)}` : ""}.`
+      : "Dokumen ini dibatalkan. Stok tidak berubah.";
 
   return (
-    <div className="si-page">
-      <header className="si-page-header no-print">
-        <div className="page-header-text">
-          <p className="section-label">{opnameLocationLabel(doc.location)}</p>
-          <h1 className="page-title">Dokumen opname</h1>
-          <p className="lede">Dokumen hitung fisik.</p>
-        </div>
-        <div className="page-header-actions">
-          <Link className="btn btn-ghost" href={listHref}>
-            Kembali
-          </Link>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => window.print()}
-          >
-            Cetak
-          </button>
-          {canMutate && doc.status === "draft" ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={busy}
-              onClick={() => void confirm()}
-            >
-              {busy ? "Memproses…" : "Konfirmasi & sesuaikan persediaan"}
-            </button>
-          ) : null}
-        </div>
-      </header>
+    <div className="ds-screen">
+      <div className="ds-screen no-print">
+        <PageHeader
+          align="start"
+          mono
+          compactLede
+          kicker={
+            <LocationTag
+              location={location}
+              label={`Opname ${where}`}
+            />
+          }
+          title={number}
+          titleAside={<StatusChip kind="opname" status={doc.status} size="lg" />}
+          lede={
+            <>
+              Dihitung <strong className="ds-medium">{opnameLocationLabel(doc.location)}</strong> ·{" "}
+              {formatDay(doc.created_at)}{" "}
+              <span className="ds-num">{formatClock(doc.created_at)}</span>
+            </>
+          }
+          actions={
+            <Button variant="secondary" onClick={() => window.print()}>
+              Cetak berita acara
+            </Button>
+          }
+        />
 
-      <div className="si-toolbar no-print">
-        <div className="si-toolbar-meta">
-          <p className="si-count">
-            <strong>{summary.withVariance}</strong> item selisih dari{" "}
-            {summary.total} baris
+        <StepPills
+          label="Langkah opname"
+          steps={["Hitung", "Tinjau selisih", "Konfirmasi"]}
+          current={1}
+          complete={confirmed}
+        />
+
+        {loadError ? (
+          <InlineAlert role="alert" title="Dokumen belum bisa dimuat ulang">
+            {loadError}
+          </InlineAlert>
+        ) : null}
+
+        {actionInfo ? (
+          <InlineAlert
+            role="alert"
+            title={actionInfo.title}
+            actions={
+              <Button size="sm" variant="secondary" onClick={() => void load()}>
+                Muat ulang
+              </Button>
+            }
+          >
+            {actionInfo.body}
+          </InlineAlert>
+        ) : null}
+
+        {drifted.length > 0 ? (
+          <InlineAlert
+            tone="warn"
+            title={
+              drifted.length === 1
+                ? `Stok ${drifted[0].item_name} sudah berubah sejak dihitung`
+                : `Stok ${drifted.length} item sudah berubah sejak dihitung`
+            }
+            actions={
+              canMutate ? (
+                <LinkButton
+                  size="sm"
+                  variant="secondary"
+                  href={`/app/opnames/new?focus=${doc.location === "kitchen" ? "kitchen" : "warehouse"}`}
+                >
+                  Hitung ulang
+                </LinkButton>
+              ) : undefined
+            }
+          >
+            Konfirmasi akan menimpa stok dengan hasil hitung, jadi pergerakan sesudah draf dibuat
+            (kiriman, akhir shift, persediaan masuk) ikut tertimpa. Hitung ulang kalau hasilnya
+            sudah tidak sesuai.
+            <ul className="ds-drift-list">
+              {drifted.slice(0, 5).map((l) => (
+                <li key={l.id}>
+                  <span className="ds-medium">{l.item_name}</span>: sistem{" "}
+                  <span className="ds-num">{formatQty(l.system_qty, l.unit_code)}</span> saat dihitung,{" "}
+                  <span className="ds-num">
+                    {formatQty(live?.get(l.item_id) ?? 0, l.unit_code)}
+                  </span>{" "}
+                  sekarang
+                </li>
+              ))}
+              {drifted.length > 5 ? <li>dan {drifted.length - 5} item lain</li> : null}
+            </ul>
+          </InlineAlert>
+        ) : null}
+
+        <section className="ds-sumbar is-sticky" aria-label="Ringkasan opname">
+          <dl className="ds-sumbar-stats">
+            <div>
+              <dt>Dihitung</dt>
+              <dd className="ds-num">{formatQty(summary.total)}</dd>
+            </div>
+            <div>
+              <dt>Cocok</dt>
+              <dd className="ds-num">{formatQty(summary.match)}</dd>
+            </div>
+            <div>
+              <dt>Lebih</dt>
+              <dd className="ds-num is-over">{formatQty(summary.over)}</dd>
+            </div>
+            <div>
+              <dt>Kurang</dt>
+              <dd className="ds-num is-under">{formatQty(summary.under)}</dd>
+            </div>
+          </dl>
+          <div className="ds-sumbar-side">
+            {isDraft && canMutate ? (
+              <div className="ds-sumbar-actions">
+                <Button
+                  variant="light"
+                  disabled={busy}
+                  aria-describedby="opname-note"
+                  onClick={() => void confirm()}
+                >
+                  {busy ? "Mengonfirmasi…" : "Konfirmasi & sesuaikan persediaan"}
+                </Button>
+              </div>
+            ) : null}
+            <p id="opname-note" className="ds-sumbar-note">
+              {note}
+            </p>
+          </div>
+        </section>
+
+        <div className="ds-toolbar-group ds-between">
+          <p className="ds-card-hint">
+            <strong className="ds-num ds-ink">{summary.over + summary.under}</strong> item selisih
+            dari <span className="ds-num">{summary.total}</span> baris
           </p>
+<<<<<<< HEAD
         </div>
         <div className="si-filter-row">
           <button
@@ -198,9 +363,21 @@ function OpnameDetailContent() {
           >
             Semua item
           </button>
+=======
+          <FilterChips
+            label="Tampilan baris"
+            value={onlyVariance ? "variance" : "all"}
+            onChange={(v) => setOnlyVariance(v === "variance")}
+            items={[
+              { id: "variance", label: "Hanya selisih", count: summary.over + summary.under },
+              { id: "all", label: "Semua item", count: summary.total },
+            ]}
+          />
+>>>>>>> origin/feat/web-redesign
         </div>
       </div>
 
+      {/* Berita acara: tampil di layar sebagai dokumen, dan inilah yang tercetak */}
       <article className="si-doc" id="opname-print">
         <header className="si-doc-kop">
           <p className="si-doc-brand">Dapoer Sari</p>
@@ -212,7 +389,7 @@ function OpnameDetailContent() {
         <dl className="si-doc-meta-grid">
           <div className="si-doc-meta-row">
             <dt>Nomor</dt>
-            <dd>{shortId(doc.id)}</dd>
+            <dd>{number}</dd>
           </div>
           <div className="si-doc-meta-row">
             <dt>Lokasi</dt>
@@ -224,21 +401,19 @@ function OpnameDetailContent() {
           </div>
           <div className="si-doc-meta-row">
             <dt>Dibuat</dt>
-            <dd>{formatDateTime(doc.created_at)}</dd>
+            <dd>{formatFullStamp(doc.created_at)}</dd>
           </div>
-          {confirmedAt ? (
+          {doc.confirmed_at ? (
             <div className="si-doc-meta-row">
               <dt>Dikonfirmasi</dt>
-              <dd>{confirmedAt}</dd>
+              <dd>{formatFullStamp(doc.confirmed_at)}</dd>
             </div>
           ) : null}
         </dl>
 
         <p className="si-doc-lead">
-          Pada tanggal {formatDateTime(doc.created_at)} telah dilakukan
-          penghitungan fisik persediaan di lokasi{" "}
-          {opnameLocationLabel(doc.location).toLowerCase()} dengan hasil
-          sebagaimana tercantum dalam berita acara ini.
+          Pada tanggal {formatFullStamp(doc.created_at)} telah dilakukan penghitungan fisik
+          persediaan di lokasi {where} dengan hasil sebagaimana tercantum dalam berita acara ini.
         </p>
 
         {doc.note ? (
@@ -248,9 +423,8 @@ function OpnameDetailContent() {
         ) : null}
 
         <p className="si-doc-summary-line">
-          <strong>Ringkasan:</strong> {summary.total} item dihitung ·{" "}
-          {summary.matched} cocok · {summary.surplusItems} selisih (+) ·{" "}
-          {summary.deficitItems} selisih (−)
+          <strong>Ringkasan:</strong> {summary.total} item dihitung · {summary.match} cocok ·{" "}
+          {summary.over} selisih (+) · {summary.under} selisih (−)
         </p>
 
         <h3 className="si-doc-section-title">
@@ -265,7 +439,7 @@ function OpnameDetailContent() {
           </p>
         ) : (
           <div className="data-table-wrap si-doc-table">
-            <table className="data-table">
+            <table className="data-table is-stack">
               <thead>
                 <tr>
                   <th className="si-doc-col-num">No</th>
@@ -281,18 +455,16 @@ function OpnameDetailContent() {
               <tbody>
                 {visibleLines.map((l, i) => (
                   <tr key={l.id}>
-                    <td className="si-doc-col-num">{i + 1}</td>
-                    <td>
+                    <td data-label="No" className="si-doc-col-num">{i + 1}</td>
+                    <td data-label="SKU">
                       <strong>{l.item_sku}</strong>
                     </td>
-                    <td>{l.item_name}</td>
-                    <td>{l.category_name || "—"}</td>
-                    <td>{l.unit_code}</td>
-                    <td>{l.system_qty}</td>
-                    <td>{l.physical_qty}</td>
-                    <td className={varianceClass(l.variance)}>
-                      {l.variance > 0 ? `+${l.variance}` : l.variance}
-                    </td>
+                    <td data-title>{l.item_name}</td>
+                    <td data-label="Kategori">{l.category_name || "—"}</td>
+                    <td data-label="Satuan">{l.unit_code}</td>
+                    <td data-label="Qty sistem">{formatQty(l.system_qty)}</td>
+                    <td data-label="Qty fisik">{formatQty(l.physical_qty)}</td>
+                    <td data-label="Selisih" className={varianceClass(l.variance)}>{signedQty(l.variance)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -301,11 +473,10 @@ function OpnameDetailContent() {
         )}
 
         <p className="si-doc-closing">
-          {doc.status === "confirmed"
+          {confirmed
             ? "Status dokumen: dikonfirmasi. Persediaan sistem sudah disesuaikan sesuai hasil hitung fisik di atas."
             : "Status dokumen: draf. Persediaan sistem belum diubah hingga dokumen dikonfirmasi."}{" "}
-          Demikian berita acara ini dibuat untuk dipergunakan sebagaimana
-          mestinya.
+          Demikian berita acara ini dibuat untuk dipergunakan sebagaimana mestinya.
         </p>
 
         <footer className="si-doc-foot">
@@ -331,8 +502,8 @@ export default function OpnameDetailPage() {
   return (
     <Suspense
       fallback={
-        <div className="si-page">
-          <p className="muted">Memuat…</p>
+        <div className="ds-screen">
+          <p className="ds-card-hint">Memuat…</p>
         </div>
       }
     >

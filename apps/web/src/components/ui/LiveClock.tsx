@@ -37,19 +37,17 @@ function useNow() {
   return now;
 }
 
-/** Tanggal operasional di blok branding (tanpa jam). */
-export function LiveClock({ className = "" }: { className?: string }) {
+/** Inline date, e.g. "Jumat, 30 Oktober 2026". */
+export function NowDate({ className = "" }: { className?: string }) {
   const now = useNow();
-
   return (
-    <p className={`entry-clock ${className}`.trim()} suppressHydrationWarning>
-      <span className="entry-clock-date">
-        {now ? formatTanggal(now) : "—"}
-      </span>
-    </p>
+    <span className={className} suppressHydrationWarning>
+      {now ? formatTanggal(now) : "—"}
+    </span>
   );
 }
 
+<<<<<<< HEAD
 /** Tanggal hidup untuk metrik ringkasan landing. */
 export function LiveDate({ className = "" }: { className?: string }) {
   const now = useNow();
@@ -66,11 +64,14 @@ export function LiveDate({ className = "" }: { className?: string }) {
 
 /** Jam hidup untuk kartu ringkasan. */
 export function LiveTime({ className = "" }: { className?: string }) {
+=======
+/** Inline ticking time, `HH:MM:SS` with colons. */
+export function NowTime({ className = "" }: { className?: string }) {
+>>>>>>> origin/feat/web-redesign
   const now = useNow();
-
   return (
-    <p className={`stat-value ${className}`.trim()} suppressHydrationWarning>
+    <span className={className} suppressHydrationWarning>
       {now ? formatJam(now) : "—"}
-    </p>
+    </span>
   );
 }

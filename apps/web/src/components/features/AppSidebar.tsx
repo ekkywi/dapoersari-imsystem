@@ -1,343 +1,74 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { NavKey, navKeysForRole } from "@/lib/rbac";
+import { LocationShape } from "@/components/ui/LocationTag";
+import { dashboardApi } from "@/lib/dashboard";
+import { NAV_GROUPS, isItemActive, type NavItem } from "@/lib/nav";
+import { navKeysForRole } from "@/lib/rbac";
 
-type NavItem = {
-  key: NavKey;
-  href: string;
-  label: string;
-  icon: ReactNode;
-};
+type NavCounts = { alerts: number; pendingRequests: number };
 
-type NavGroup = {
-  title: string;
-  items: NavItem[];
-};
+/**
+ * Sidebar badges. Reads the existing dashboard summary and refreshes on every
+ * navigation, so approving a request updates the count when the user lands back
+ * on the queue. Failure is silent: a missing badge must never break navigation.
+ */
+// TODO(api): a lighter GET /nav-counts would avoid loading the full summary here.
+function useNavCounts(pathname: string): NavCounts | null {
+  const [counts, setCounts] = useState<NavCounts | null>(null);
 
-function IconLayout() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect
-        x="3.5"
-        y="3.5"
-        width="17"
-        height="17"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="1.75"
-      />
-      <path
-        d="M3.5 9.5h17M9.5 9.5v11"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+  useEffect(() => {
+    let alive = true;
+    dashboardApi
+      .summary()
+      .then((s) => {
+        if (!alive) return;
+        setCounts({
+          alerts: s.warehouse_low_stock + s.kitchen_low_stock,
+          pendingRequests: s.pending_approvals,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [pathname]);
+
+  return counts;
 }
 
-function IconRuler() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M4.5 15.5 15.5 4.5l4 4-11 11-4-4Z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8 12l1.5 1.5M11 9l1.5 1.5M14 6l1.5 1.5"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+function badgeCount(item: NavItem, counts: NavCounts | null): number {
+  if (!counts || !item.badge) return 0;
+  return item.badge === "alerts" ? counts.alerts : counts.pendingRequests;
 }
 
-function IconTag() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M3.5 12.5V5.5A2 2 0 0 1 5.5 3.5h7l8 8-7 7-8-8Z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-      <circle cx="8" cy="8" r="1.25" fill="currentColor" />
-    </svg>
-  );
-}
-
-function IconTruck() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M3.5 7.5h10v9h-10zM13.5 10.5h4.2l2.8 3v3h-7v-6Z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-      <circle cx="7.5" cy="17.5" r="1.75" stroke="currentColor" strokeWidth="1.75" />
-      <circle cx="17" cy="17.5" r="1.75" stroke="currentColor" strokeWidth="1.75" />
-    </svg>
-  );
-}
-
-function IconBox() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 3.5 20 8v8l-8 4.5L4 16V8l8-4.5Z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12 12v8.5M12 12 20 8M12 12 4 8"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function IconLayers() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 3.5 20.5 8.5 12 13.5 3.5 8.5 12 3.5Z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M3.5 12.5 12 17.5l8.5-5M3.5 16 12 21l8.5-5"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function IconInbox() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M4 13.5 6.2 5.5h11.6L20 13.5v5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-5Z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M4 13.5h4.2l1.3 2h5l1.3-2H20"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function IconBook() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M5 4.5h11.5A2.5 2.5 0 0 1 19 7v12.5H7.5A2.5 2.5 0 0 0 5 22"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function IconClipboard() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect
-        x="6"
-        y="5"
-        width="12"
-        height="15"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="1.75"
-      />
-      <path
-        d="M9 5.5V4.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4.5v1"
-        stroke="currentColor"
-        strokeWidth="1.75"
-      />
-      <path
-        d="M9 11h6M9 14.5h6"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    title: "Utama",
-    items: [
-      { key: "overview", href: "/app", label: "Ringkasan", icon: <IconLayout /> },
-      {
-        key: "alerts",
-        href: "/app/alerts",
-        label: "Peringatan Persediaan",
-        icon: <IconTag />,
-      },
-    ],
-  },
-  {
-    title: "Master",
-    items: [
-      { key: "units", href: "/app/warehouse/units", label: "Satuan", icon: <IconRuler /> },
-      {
-        key: "categories",
-        href: "/app/warehouse/categories",
-        label: "Kategori",
-        icon: <IconTag />,
-      },
-      {
-        key: "suppliers",
-        href: "/app/warehouse/suppliers",
-        label: "Pemasok / Vendor",
-        icon: <IconTruck />,
-      },
-      { key: "items", href: "/app/warehouse/items", label: "Item", icon: <IconBox /> },
-    ],
-  },
-  {
-    title: "Gudang",
-    items: [
-      {
-        key: "stocks",
-        href: "/app/warehouse/stocks",
-        label: "Persediaan Gudang",
-        icon: <IconLayers />,
-      },
-      {
-        key: "stock-ins",
-        href: "/app/warehouse/stock-ins",
-        label: "Persediaan Masuk",
-        icon: <IconInbox />,
-      },
-      {
-        key: "stock-requests-warehouse",
-        href: "/app/stock-requests?focus=warehouse",
-        label: "Antrian Permintaan",
-        icon: <IconClipboard />,
-      },
-      {
-        key: "opname-warehouse",
-        href: "/app/opnames?focus=warehouse",
-        label: "Opname Gudang",
-        icon: <IconClipboard />,
-      },
-    ],
-  },
-  {
-    title: "Dapur",
-    items: [
-      { key: "menus", href: "/app/kitchen/menus", label: "Resep / Menu", icon: <IconBook /> },
-      {
-        key: "kitchen-stocks",
-        href: "/app/kitchen/stocks",
-        label: "Persediaan Dapur",
-        icon: <IconLayers />,
-      },
-      {
-        key: "stock-requests-kitchen",
-        href: "/app/stock-requests?focus=kitchen",
-        label: "Permintaan Persediaan",
-        icon: <IconClipboard />,
-      },
-      {
-        key: "closings",
-        href: "/app/kitchen/closings",
-        label: "Akhir Shift",
-        icon: <IconClipboard />,
-      },
-      {
-        key: "opname-kitchen",
-        href: "/app/opnames?focus=kitchen",
-        label: "Opname Dapur",
-        icon: <IconClipboard />,
-      },
-    ],
-  },
-  {
-    title: "Administrasi",
-    items: [
-      {
-        key: "users",
-        href: "/app/admin/users",
-        label: "Pengguna",
-        icon: <IconLayout />,
-      },
-    ],
-  },
-  {
-    title: "Audit",
-    items: [
-      {
-        key: "history",
-        href: "/app/history",
-        label: "Riwayat",
-        icon: <IconInbox />,
-      },
-    ],
-  },
-];
-
-function pathAndFocus(href: string): { path: string; focus: string | null } {
-  const [path, qs] = href.split("?");
-  if (!qs) return { path, focus: null };
-  const focus = new URLSearchParams(qs).get("focus");
-  return { path, focus };
-}
-
-function isActive(
-  pathname: string,
-  search: string,
-  href: string,
-): boolean {
-  const { path, focus } = pathAndFocus(href);
-  if (path === "/app") {
-    return pathname === "/app";
-  }
-  if (!(pathname === path || pathname.startsWith(`${path}/`))) {
-    return false;
-  }
-  if (focus) {
-    const current = new URLSearchParams(search).get("focus");
-    return current === focus;
-  }
-  return true;
+function Marker({ item }: { item: NavItem }) {
+  if (item.marker === "warehouse") return <LocationShape location="warehouse" />;
+  if (item.marker === "kitchen") return <LocationShape location="kitchen" />;
+  return <span className="shell-nav-ring" aria-hidden="true" />;
 }
 
 export function AppSidebar({ role }: { role: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
+  const counts = useNavCounts(pathname);
+  // Phones only: the menu is folded behind a button. On wide screens CSS shows it regardless.
+  const [open, setOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      toggleRef.current?.focus();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   const groups = useMemo(() => {
     const allowed = navKeysForRole(role);
@@ -348,22 +79,38 @@ export function AppSidebar({ role }: { role: string }) {
   }, [role]);
 
   return (
-    <aside className="shell-sidebar" aria-label="Navigasi utama">
+    <aside
+      className={open ? "shell-sidebar is-open" : "shell-sidebar"}
+      aria-label="Navigasi utama"
+    >
       <div className="shell-sidebar-brand">
-        <span className="shell-brand-mark" aria-hidden />
-        <div>
-          <p className="shell-brand">Dapoer Sari</p>
-          <p className="shell-sidebar-tagline">Inventaris</p>
+        <span className="shell-brand-mark" aria-hidden="true">
+          DS
+        </span>
+        <div className="shell-brand-text">
+          <span className="shell-brand">Dapoer Sari</span>
+          <span className="shell-sidebar-tagline">Inventaris gudang &amp; dapur</span>
         </div>
+        <button
+          ref={toggleRef}
+          type="button"
+          className="shell-nav-toggle"
+          aria-expanded={open}
+          aria-controls="shell-nav"
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? "Tutup menu" : "Menu"}
+        </button>
       </div>
 
-      <nav className="shell-nav">
+      <nav id="shell-nav" className="shell-nav" aria-label="Menu">
         {groups.map((group) => (
           <div key={group.title} className="shell-nav-group">
             <p className="shell-nav-title">{group.title}</p>
             <ul className="shell-nav-list">
               {group.items.map((item) => {
-                const active = isActive(pathname, search, item.href);
+                const active = isItemActive(pathname, search, item);
+                const count = badgeCount(item, counts);
                 return (
                   <li key={item.key}>
                     <Link
@@ -372,9 +119,21 @@ export function AppSidebar({ role }: { role: string }) {
                         active ? "shell-nav-link is-active" : "shell-nav-link"
                       }
                       aria-current={active ? "page" : undefined}
+                      onClick={() => setOpen(false)}
                     >
-                      <span className="shell-nav-icon">{item.icon}</span>
+                      <Marker item={item} />
                       <span>{item.label}</span>
+                      {count > 0 ? (
+                        <span
+                          className={
+                            item.badge === "alerts"
+                              ? "shell-nav-badge ds-num is-alert"
+                              : "shell-nav-badge ds-num"
+                          }
+                        >
+                          {count}
+                        </span>
+                      ) : null}
                     </Link>
                   </li>
                 );
