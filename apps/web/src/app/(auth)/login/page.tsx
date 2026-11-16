@@ -28,13 +28,6 @@ function pesanLogin(raw: string): string {
   if (key.includes("tidak aktif") || key.includes("inactive")) {
     return "Akun tidak aktif";
   }
-  if (
-    key.includes("terlalu banyak") ||
-    key.includes("too many") ||
-    key.includes("rate")
-  ) {
-    return "Terlalu banyak percobaan masuk; coba lagi nanti";
-  }
   if (key.includes("failed to fetch") || key.includes("network")) {
     return "Tidak dapat menghubungi layanan";
   }
@@ -104,82 +97,6 @@ export default function LoginPage() {
   }
 
   return (
-<<<<<<< HEAD
-    <main className="login-screen">
-      <aside className="login-brand-panel" aria-hidden={false}>
-        <div className="login-brand-media" aria-hidden>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            className="login-brand-photo"
-            src="/hero-kitchen.png"
-            alt=""
-          />
-          <div className="login-brand-scrim" />
-        </div>
-        <div className="login-brand-copy">
-          <h1 className="login-brand">Dapoer Sari</h1>
-          <hr className="login-brand-rule" />
-          <p className="login-lede">Catat stok gudang dan dapur.</p>
-        </div>
-      </aside>
-
-      <section className="login-form-panel">
-        <div className="login-form-top">
-          <p className="login-kicker">Inventaris rumah makan</p>
-          <ThemeToggle />
-        </div>
-
-        <div className="login-form-wrap">
-          <header className="login-form-head">
-            <h2 className="login-form-title">Masuk</h2>
-            <p className="login-card-desc">Masuk dengan akun staf Anda.</p>
-          </header>
-
-          <form className="form" onSubmit={onSubmit}>
-            <label className="field">
-              <span className="label">Email</span>
-              <input
-                className="input"
-                type="email"
-                autoComplete="username"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </label>
-
-            <label className="field">
-              <span className="label">Kata sandi</span>
-              <input
-                className="input"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
-
-            {error ? (
-              <p className="error" role="alert">
-                {error}
-              </p>
-            ) : null}
-
-            <button
-              type="submit"
-              className="btn btn-primary btn-block"
-              disabled={loading}
-            >
-              {loading ? "Memproses…" : "Masuk"}
-            </button>
-          </form>
-        </div>
-
-        <p className="login-back">
-          <Link href="/">Kembali ke beranda</Link>
-        </p>
-=======
     <main className="ds-login">
       <section className="ds-login-aside" aria-label="Tentang sistem">
         <div className="ds-login-brand">
@@ -281,7 +198,6 @@ export default function LoginPage() {
             Lupa kata sandi? Minta Super Admin mengatur ulang dari menu Pengguna.
           </p>
         </form>
->>>>>>> origin/feat/web-redesign
       </section>
     </main>
   );

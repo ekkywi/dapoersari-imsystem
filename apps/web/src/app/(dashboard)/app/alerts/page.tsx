@@ -95,24 +95,12 @@ function AlertsContent() {
   const known = !loading && !(loadError && rows.length === 0);
 
   return (
-<<<<<<< HEAD
-    <div className="si-page">
-      <header className="si-page-header">
-        <div className="page-header-text">
-          <p className="section-label">Operasional</p>
-          <h1 className="page-title">Peringatan Persediaan</h1>
-          <p className="lede">Item di bawah min stok (gudang &amp; dapur).</p>
-        </div>
-        <div className="page-header-actions">
-          <Link className="btn btn-ghost" href="/app">
-=======
     <div className="ds-screen">
       <PageHeader
         title="Peringatan persediaan"
         lede="Item yang stoknya sudah sama dengan atau di bawah batas minimum. Yang paling mendesak ada di atas."
         actions={
           <LinkButton href="/app" variant="secondary">
->>>>>>> origin/feat/web-redesign
             Ringkasan
           </LinkButton>
         }

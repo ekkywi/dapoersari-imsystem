@@ -2,9 +2,6 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-<<<<<<< HEAD
-import { ApiError } from "@/lib/api";
-=======
 import { Button, LinkButton } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/ui/InlineAlert";
 import { LocationTag } from "@/components/ui/LocationTag";
@@ -12,7 +9,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { StepPills } from "@/components/ui/StepPills";
 import { FilterChips } from "@/components/ui/Tabs";
->>>>>>> origin/feat/web-redesign
 import { getUser } from "@/lib/auth";
 import { formatClock, formatDay, formatFullStamp, formatStamp } from "@/lib/datetime";
 import { docNo, formatQty, signedQty } from "@/lib/format";
@@ -131,25 +127,11 @@ function OpnameDetailContent() {
     setBusy(true);
     setActionError(null);
     try {
-<<<<<<< HEAD
-      const updated: Opname = await opnameApi.confirm(doc.id);
-      setDoc(updated);
-      toastSuccess("Opname dikonfirmasi; persediaan disesuaikan");
-    } catch (e) {
-      if (e instanceof ApiError && e.code === "closing_after_draft") {
-        window.alert(
-          "Ada akhir shift (closing) yang dicatat setelah draf ini dibuat. Pemakaiannya kemungkinan sudah tercermin di hitungan fisik, sehingga akan terpotong dua kali.\n\nBuat draf opname baru (hitung ulang) setelah closing.",
-        );
-        return;
-      }
-      toastError(e instanceof Error ? e.message : "Gagal konfirmasi");
-=======
       setDoc(await opnameApi.confirm(doc.id));
       setLive(null);
       toastSuccess("Opname dikonfirmasi; persediaan disesuaikan");
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Gagal konfirmasi");
->>>>>>> origin/feat/web-redesign
     } finally {
       setBusy(false);
     }
@@ -342,28 +324,6 @@ function OpnameDetailContent() {
             <strong className="ds-num ds-ink">{summary.over + summary.under}</strong> item selisih
             dari <span className="ds-num">{summary.total}</span> baris
           </p>
-<<<<<<< HEAD
-        </div>
-        <div className="si-filter-row">
-          <button
-            type="button"
-            className={
-              onlyVariance ? "si-filter-chip is-active" : "si-filter-chip"
-            }
-            onClick={() => setOnlyVariance(true)}
-          >
-            Hanya selisih
-          </button>
-          <button
-            type="button"
-            className={
-              !onlyVariance ? "si-filter-chip is-active" : "si-filter-chip"
-            }
-            onClick={() => setOnlyVariance(false)}
-          >
-            Semua item
-          </button>
-=======
           <FilterChips
             label="Tampilan baris"
             value={onlyVariance ? "variance" : "all"}
@@ -373,7 +333,6 @@ function OpnameDetailContent() {
               { id: "all", label: "Semua item", count: summary.total },
             ]}
           />
->>>>>>> origin/feat/web-redesign
         </div>
       </div>
 

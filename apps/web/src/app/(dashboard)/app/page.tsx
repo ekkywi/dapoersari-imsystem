@@ -355,49 +355,6 @@ export default function DashboardPage() {
   const tipis = alerts ? thinnest(alerts) : [];
 
   return (
-<<<<<<< HEAD
-    <div className="si-page">
-      <header className="si-page-header">
-        <div className="page-header-text">
-          <p className="section-label">Operasional</p>
-          <h1 className="page-title">Ringkasan</h1>
-          <p className="lede">
-            Status persediaan gudang, dapur, dan antrian dokumen.
-          </p>
-        </div>
-        <div className="page-header-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => void load()}>
-            Muat ulang
-          </button>
-          <Link className="btn btn-primary" href="/app/alerts">
-            Lihat alert
-          </Link>
-        </div>
-      </header>
-
-      {loading || !summary ? (
-        <div className="si-empty">
-          <p className="muted">Memuat ringkasan…</p>
-        </div>
-      ) : (
-        <>
-          <div className="badge-row">
-            {totalLow === 0 ? (
-              <span className="badge badge-success">Persediaan dalam ambang</span>
-            ) : (
-              <span className="badge badge-warn">{totalLow} item perlu perhatian</span>
-            )}
-            {summary.in_transit_requests > 0 ? (
-              <span className="badge badge-neutral">
-                {summary.in_transit_requests} dalam perjalanan
-              </span>
-            ) : null}
-            {summary.pending_approvals > 0 ? (
-              <span className="badge badge-danger">
-                {summary.pending_approvals} menunggu persetujuan
-              </span>
-            ) : null}
-=======
     <div className="ds-screen">
       <PageHeader
         kicker={formatDateLong()}
@@ -460,7 +417,6 @@ export default function DashboardPage() {
               Perlu tindakan
             </h2>
             <p className="ds-card-hint">Diurutkan dari yang paling lama menunggu</p>
->>>>>>> origin/feat/web-redesign
           </div>
           {actionsLoading ? (
             <p className="ds-todo-empty">Memuat…</p>
@@ -563,15 +519,6 @@ export default function DashboardPage() {
           )}
         </section>
 
-<<<<<<< HEAD
-          <p className="si-footnote">
-            *Dapur: persediaan tersedia + dalam perjalanan. Lead{" "}
-            {summary.lead_time_days} hari · interval {summary.order_interval_days}{" "}
-            hari.
-          </p>
-        </>
-      )}
-=======
         <section className="ds-card" aria-labelledby="log-title">
           <div className="ds-todo-head">
             <h2 id="log-title" className="ds-card-title">
@@ -607,7 +554,6 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
->>>>>>> origin/feat/web-redesign
     </div>
   );
 }

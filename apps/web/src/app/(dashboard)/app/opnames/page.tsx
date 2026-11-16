@@ -2,18 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-<<<<<<< HEAD
-import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { Drawer } from "@/components/ui/Drawer";
-import { ApiError } from "@/lib/api";
-=======
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/ui/InlineAlert";
 import { LocationTag } from "@/components/ui/LocationTag";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
->>>>>>> origin/feat/web-redesign
 import { getUser } from "@/lib/auth";
 import { formatStamp, relativeTime } from "@/lib/datetime";
 import { docNo } from "@/lib/format";
@@ -66,46 +60,8 @@ function OpnamesContent() {
     );
   }, [rows, query]);
 
-<<<<<<< HEAD
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!canMutate || !location) return;
-    const lines = draftLines
-      .map((l) => ({
-        item_id: l.item_id,
-        physical_qty: Number(l.physical_qty),
-      }))
-      .filter((l) => l.item_id && Number.isFinite(l.physical_qty) && l.physical_qty >= 0);
-    if (lines.length === 0) {
-      setFormError("Minimal satu item dengan qty fisik");
-      return;
-    }
-    setSaving(true);
-    setFormError(null);
-    try {
-      const body = { location, note: note.trim() || null, lines };
-      try {
-        await opnameApi.create(body);
-      } catch (err) {
-        if (!(err instanceof ApiError && err.code === "closing_missing")) throw err;
-        const go = window.confirm(
-          "Belum ada akhir shift (closing) dapur untuk hari ini. Sebaiknya lakukan closing dulu, lalu hitung fisik, baru buat draf.\n\nPeringatan: closing yang dicatat SETELAH draf ini akan membuat draf tidak bisa dikonfirmasi.\n\nTetap buat draf sekarang?",
-        );
-        if (!go) return;
-        await opnameApi.create({ ...body, acknowledge_no_closing: true });
-      }
-      setDrawerOpen(false);
-      toastSuccess("Draf opname dibuat — konfirmasi di detail");
-      await load();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Gagal membuat opname");
-    } finally {
-      setSaving(false);
-    }
-=======
   function detailHref(id: string): string {
     return focus ? `/app/opnames/${id}?focus=${focus}` : `/app/opnames/${id}`;
->>>>>>> origin/feat/web-redesign
   }
 
   return (

@@ -361,72 +361,6 @@ export default function AdminUsersPage() {
             ulang halaman ini.
           </InlineAlert>
         ) : (
-<<<<<<< HEAD
-          <div className="data-table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Nama</th>
-                  <th>Email</th>
-                  <th>Peran</th>
-                  <th>Status</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((u) => {
-                  const isSelf = u.id === meId;
-                  return (
-                    <tr key={u.id}>
-                      <td>
-                        <strong>{u.full_name}</strong>
-                        {isSelf ? (
-                          <span className="muted"> · Anda</span>
-                        ) : null}
-                      </td>
-                      <td>{u.email}</td>
-                      <td>{roleLabel(u.role)}</td>
-                      <td>{u.is_active ? "Aktif" : "Nonaktif"}</td>
-                      <td>
-                        <div className="si-toolbar-actions si-row-actions">
-                          <button
-                            type="button"
-                            className="btn btn-ghost"
-                            onClick={() => openEdit(u)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-ghost"
-                            onClick={() => openPassword(u)}
-                          >
-                            Reset sandi
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-ghost"
-                            disabled={isSelf}
-                            title={
-                              isSelf
-                                ? "Tidak bisa menonaktifkan akun sendiri"
-                                : undefined
-                            }
-                            onClick={() => void toggleActive(u)}
-                          >
-                            {u.is_active ? "Nonaktifkan" : "Aktifkan"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-=======
           <InlineAlert
             role="alert"
             title="Daftar pengguna belum bisa dimuat"
@@ -440,7 +374,6 @@ export default function AdminUsersPage() {
           </InlineAlert>
         )
       ) : null}
->>>>>>> origin/feat/web-redesign
 
       {loadError ? null : (
         <div className="ds-split">

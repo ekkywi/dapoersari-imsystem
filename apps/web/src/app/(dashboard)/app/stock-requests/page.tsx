@@ -26,31 +26,11 @@ import {
   showWarehouseRequestActions,
   type RequestFocus,
 } from "@/lib/rbac";
-<<<<<<< HEAD
-import { toastError, toastSuccess } from "@/lib/toast";
-import {
-  requestStatusBadge,
-  requestStatusLabel,
-  StockRequest,
-  transferApi,
-} from "@/lib/transfer";
-import { Item, warehouseApi } from "@/lib/warehouse";
-
-const ALL_STATUSES = [
-  "submitted",
-  "approved",
-  "transferred",
-  "received",
-  "rejected",
-  "cancelled",
-] as const;
-=======
 import { checkLines, shortages } from "@/lib/request-stock";
 import { StockRequest, transferApi } from "@/lib/transfer";
 import { warehouseApi } from "@/lib/warehouse";
 
 type TabId = "aktif" | "setuju" | "kirim" | "jalan" | "selesai" | "tolak";
->>>>>>> origin/feat/web-redesign
 
 const TABS: { id: TabId; label: string; statuses: string[]; hint: string; empty: string }[] = [
   {
@@ -378,24 +358,6 @@ function StockRequestsContent() {
                 </tr>
               </thead>
               <tbody>
-<<<<<<< HEAD
-                {filtered.map((r) => (
-                  <tr key={r.id}>
-                    <td>{formatDateTime(r.created_at)}</td>
-                    <td>
-                      <span className={requestStatusBadge(r.status)}>
-                        {requestStatusLabel(r.status)}
-                      </span>
-                    </td>
-                    <td>{r.note || "—"}</td>
-                    <td>
-                      <Link className="btn btn-ghost" href={detailHref(r.id)}>
-                        Buka
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-=======
                 {visible.map((r) => {
                   const detail = details[r.id];
                   const content = describeContent(detail);
@@ -448,7 +410,6 @@ function StockRequestsContent() {
                     </tr>
                   );
                 })}
->>>>>>> origin/feat/web-redesign
               </tbody>
             </table>
           </div>

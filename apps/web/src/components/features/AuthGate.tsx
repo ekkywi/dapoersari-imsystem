@@ -13,10 +13,6 @@ import {
   type NavKey,
 } from "@/lib/rbac";
 
-/** Logout after this much idle time (no pointer/keyboard activity). */
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
-const IDLE_CHECK_MS = 30 * 1000;
-
 const PATH_TO_NAV: { prefix: string; key: NavKey }[] = [
   { prefix: "/app/warehouse/units", key: "units" },
   { prefix: "/app/warehouse/categories", key: "categories" },
@@ -75,40 +71,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [ready, user, pathname, router]);
 
-  useEffect(() => {
-    if (!ready || !user) return;
-
-    let lastActivity = Date.now();
-    const bump = () => {
-      lastActivity = Date.now();
-    };
-
-    const events: (keyof WindowEventMap)[] = [
-      "mousemove",
-      "mousedown",
-      "keydown",
-      "touchstart",
-      "scroll",
-    ];
-    for (const ev of events) {
-      window.addEventListener(ev, bump, { passive: true });
-    }
-
-    const timer = window.setInterval(() => {
-      if (Date.now() - lastActivity >= IDLE_TIMEOUT_MS) {
-        clearSession();
-        router.replace("/login");
-      }
-    }, IDLE_CHECK_MS);
-
-    return () => {
-      for (const ev of events) {
-        window.removeEventListener(ev, bump);
-      }
-      window.clearInterval(timer);
-    };
-  }, [ready, user, router]);
-
   function logout() {
     clearSession();
     router.replace("/login");
@@ -128,28 +90,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         <AppSidebar role={user.role} />
       </Suspense>
       <div className="shell-body">
-<<<<<<< HEAD
-        <header className="shell-topbar">
-          <div className="shell-meta">
-            <span className="shell-meta-name">{user.full_name}</span>
-            <span className="badge badge-neutral">{roleLabel(user.role)}</span>
-          </div>
-          <div className="shell-topbar-actions">
-            <ThemeToggle />
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={logout}
-            >
-              Keluar
-            </button>
-          </div>
-        </header>
-=======
         <Suspense fallback={<header className="shell-topbar" aria-hidden="true" />}>
           <AppTopbar user={user} onLogout={logout} />
         </Suspense>
->>>>>>> origin/feat/web-redesign
         <div className="shell-main">{children}</div>
       </div>
       <ToastHost />

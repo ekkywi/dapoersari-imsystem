@@ -1,12 +1,5 @@
 "use client";
 
-<<<<<<< HEAD
-import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { ShortageList } from "@/components/features/ShortageList";
-import { Drawer } from "@/components/ui/Drawer";
-import { ShortageDetail, shortageDetails } from "@/lib/api";
-=======
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
@@ -15,7 +8,6 @@ import { LocationTag } from "@/components/ui/LocationTag";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Qty } from "@/components/ui/Qty";
 import { Stepper } from "@/components/ui/Stepper";
->>>>>>> origin/feat/web-redesign
 import { getUser } from "@/lib/auth";
 import { formatClock, formatDateOnly, formatStamp, todayISO } from "@/lib/datetime";
 import { formatQty } from "@/lib/format";
@@ -63,32 +55,11 @@ export default function ClosingsPage() {
   const [date, setDate] = useState(todayISO());
   const [paket, setPaket] = useState<Record<string, number>>({});
   const [note, setNote] = useState("");
-<<<<<<< HEAD
-  const [packages, setPackages] = useState<DraftPkg[]>([
-    { menu_id: "", qty_paket: "1" },
-  ]);
-  const [detail, setDetail] = useState<MenuClosing | null>(null);
-  const [shortages, setShortages] = useState<ShortageDetail[] | null>(null);
-  const [allowShortage, setAllowShortage] = useState(false);
-  const [shortageNote, setShortageNote] = useState("");
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (r) =>
-        r.closing_date.includes(q) ||
-        (r.note ?? "").toLowerCase().includes(q) ||
-        r.id.toLowerCase().includes(q),
-    );
-  }, [rows, query]);
-=======
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [shown, setShown] = useState(PAGE_SIZE);
   const [openId, setOpenId] = useState<string | null>(null);
   const requested = useRef<Set<string>>(new Set());
->>>>>>> origin/feat/web-redesign
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -100,14 +71,6 @@ export default function ClosingsPage() {
         kitchenApi.listStocks(),
         kitchenApi.listClosings(),
       ]);
-<<<<<<< HEAD
-      setRows(closings);
-      // Inactive menus stay selectable so usage of a just-deactivated menu can
-      // still be recorded; active ones first.
-      setMenus(
-        [...menuRows].sort((a, b) => Number(b.is_active) - Number(a.is_active)),
-      );
-=======
       const active = menuRows.filter((m) => m.is_active);
       // TODO(api): GET /kitchen/menus returns no recipe lines, so each active menu needs its own GET.
       const settled = await Promise.allSettled(active.map((m) => kitchenApi.getMenu(m.id)));
@@ -135,7 +98,6 @@ export default function ClosingsPage() {
       for (const s of stockRows) stock.set(s.item_id, s.qty);
       setData({ menus: active, recipes, failedMenus, info, stock });
       setClosings(closingRows);
->>>>>>> origin/feat/web-redesign
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Gagal memuat data");
     } finally {
@@ -149,18 +111,6 @@ export default function ClosingsPage() {
     void load();
   }, [load]);
 
-<<<<<<< HEAD
-  function openCreate() {
-    setClosingDate(todayISO());
-    setNote("");
-    setPackages([{ menu_id: menus.find((m) => m.is_active)?.id ?? "", qty_paket: "1" }]);
-    setFormError(null);
-    setShortages(null);
-    setAllowShortage(false);
-    setShortageNote("");
-    setDrawerOpen(true);
-  }
-=======
   // TODO(api): GET /kitchen/closings returns headers only, so "Isi" needs one GET per visible row.
   useEffect(() => {
     const missing = closings
@@ -175,7 +125,6 @@ export default function ClosingsPage() {
       setDetails((prev) => ({ ...prev, ...next }));
     });
   }, [closings, shown]);
->>>>>>> origin/feat/web-redesign
 
   const lines = useMemo(() => {
     if (!data) return [];
@@ -185,25 +134,6 @@ export default function ClosingsPage() {
     return buildDraftLines(recipes, paket, [], data.info, data.stock);
   }, [data, paket]);
 
-<<<<<<< HEAD
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!canWrite) return;
-    const pkgs = packages
-      .map((p) => ({
-        menu_id: p.menu_id,
-        qty_paket: Number(p.qty_paket),
-      }))
-      .filter((p) => p.menu_id && p.qty_paket > 0);
-    if (!closingDate || pkgs.length === 0) {
-      setFormError("Tanggal dan minimal satu paket menu wajib diisi");
-      return;
-    }
-    if (allowShortage && !shortageNote.trim()) {
-      setFormError("Catatan kekurangan wajib diisi");
-      return;
-    }
-=======
   const selectedMenus = data ? data.menus.filter((m) => (paket[m.id] ?? 0) > 0) : [];
   const total = selectedMenus.reduce((sum, m) => sum + (paket[m.id] ?? 0), 0);
   const short = lines.filter((l) => l.shortBy > 0);
@@ -230,31 +160,9 @@ export default function ClosingsPage() {
 
   async function onSave() {
     if (!canSubmit) return;
->>>>>>> origin/feat/web-redesign
     setSaving(true);
     setSaveError(null);
     try {
-<<<<<<< HEAD
-      const saved = await kitchenApi.createClosing({
-        closing_date: closingDate,
-        note: note.trim() || null,
-        packages: pkgs,
-        ...(allowShortage
-          ? { allow_shortage: true, shortage_note: shortageNote.trim() }
-          : {}),
-      });
-      setDrawerOpen(false);
-      toastSuccess(
-        saved.has_shortage
-          ? "Akhir shift tersimpan dengan kekurangan; stok dikurangi sebesar yang tersedia"
-          : "Akhir shift tersimpan; persediaan dapur dikurangi",
-      );
-      await load();
-    } catch (err) {
-      const short = shortageDetails(err);
-      setShortages(short);
-      setFormError(err instanceof Error ? err.message : "Gagal menyimpan");
-=======
       await kitchenApi.createClosing({
         closing_date: date,
         note: note.trim() || null,
@@ -266,7 +174,6 @@ export default function ClosingsPage() {
       await load();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Gagal menyimpan");
->>>>>>> origin/feat/web-redesign
     } finally {
       setSaving(false);
     }
@@ -286,102 +193,6 @@ export default function ClosingsPage() {
   const saveInfo = saveError ? explainSaveError(saveError) : null;
 
   return (
-<<<<<<< HEAD
-    <div className="si-page">
-      <header className="si-page-header">
-        <div className="page-header-text">
-          <p className="section-label">Dapur</p>
-          <h1 className="page-title">Akhir shift</h1>
-          <p className="lede">Qty paket terjual atau diproduksi.</p>
-        </div>
-      </header>
-
-      <div className="si-toolbar">
-        <div className="si-toolbar-meta">
-          <p className="si-count">
-            <strong>{filtered.length}</strong> dari {rows.length} dokumen
-          </p>
-          <input
-            className="input si-search"
-            type="search"
-            placeholder="Cari tanggal / catatan…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <div className="si-toolbar-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => void load()}>
-            Muat ulang
-          </button>
-          {canWrite ? (
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
-              Tutup shift
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      <section className="si-table-card">
-        {loading ? (
-          <div className="si-empty">
-            <p className="muted">Memuat data…</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="si-empty">
-            <p className="si-empty-title">Belum ada penutupan</p>
-            <p className="si-empty-desc">Belum ada dokumen penutupan.</p>
-          </div>
-        ) : (
-          <div className="data-table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Tanggal</th>
-                  <th>Dicatat</th>
-                  <th>Catatan</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.id}>
-                    <td>
-                      {r.closing_date}{" "}
-                      {r.has_shortage ? (
-                        <span className="badge badge-warn">Ada kekurangan</span>
-                      ) : null}
-                    </td>
-                    <td>{formatDateTime(r.created_at)}</td>
-                    <td>{r.note || "—"}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() => void openDetail(r.id)}
-                      >
-                        Buka
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <Drawer
-        open={drawerOpen}
-        title="Akhir shift"
-        description="Input qty paket terjual atau diproduksi."
-        onClose={() => setDrawerOpen(false)}
-      >
-        {formError ? <p className="error">{formError}</p> : null}
-        {shortages && shortages.length > 0 ? <ShortageList items={shortages} /> : null}
-        <form className="form" onSubmit={onSubmit}>
-          <div className="field">
-            <label className="label">Tanggal</label>
-=======
     <div className="ds-screen">
       <PageHeader
         kicker={<LocationTag location="kitchen" label="Pintu dapur" />}
@@ -390,7 +201,6 @@ export default function ClosingsPage() {
         actions={
           <label className="ds-field ds-field-sm ds-date-field">
             Tanggal
->>>>>>> origin/feat/web-redesign
             <input
               className="ds-input"
               type="date"
@@ -559,101 +369,6 @@ export default function ClosingsPage() {
               )}
             </section>
           </div>
-<<<<<<< HEAD
-          {packages.map((p, idx) => (
-            <div key={idx} className="field">
-              <label className="label">Paket {idx + 1}</label>
-              <select
-                className="input select"
-                value={p.menu_id}
-                onChange={(e) => {
-                  const next = [...packages];
-                  next[idx] = { ...p, menu_id: e.target.value };
-                  setPackages(next);
-                }}
-              >
-                <option value="">— pilih menu —</option>
-                {menus.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                    {m.is_active ? "" : " (nonaktif)"}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="input field-control"
-                type="number"
-                min={0.001}
-                step="0.001"
-                value={p.qty_paket}
-                onChange={(e) => {
-                  const next = [...packages];
-                  next[idx] = { ...p, qty_paket: e.target.value };
-                  setPackages(next);
-                }}
-              />
-            </div>
-          ))}
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() =>
-              setPackages((prev) => [
-                ...prev,
-                { menu_id: menus.find((m) => m.is_active)?.id ?? "", qty_paket: "1" },
-              ])
-            }
-          >
-            + Tambah paket
-          </button>
-          <div className="field">
-            <label className="label">Catatan</label>
-            <input
-              className="input"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
-          {shortages && shortages.length > 0 ? (
-            <div className="field">
-              <label className="label">
-                <input
-                  type="checkbox"
-                  checked={allowShortage}
-                  onChange={(e) => setAllowShortage(e.target.checked)}
-                />{" "}
-                Simpan dengan kekurangan (stok dikurangi sebesar yang tersedia)
-              </label>
-              {allowShortage ? (
-                <input
-                  className="input field-control"
-                  placeholder="Catatan kekurangan (wajib), mis. stok sistem kurang dari fisik"
-                  value={shortageNote}
-                  onChange={(e) => setShortageNote(e.target.value)}
-                  required
-                />
-              ) : null}
-            </div>
-          ) : null}
-          <div className="drawer-footer">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setDrawerOpen(false)}
-            >
-              Batal
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving
-                ? "Menyimpan…"
-                : allowShortage
-                  ? "Simpan dengan kekurangan"
-                  : "Simpan & kurangi persediaan"}
-            </button>
-          </div>
-        </form>
-      </Drawer>
-=======
 
           <section className="ds-card ds-preview" aria-labelledby="use-title">
             <div className="ds-preview-head">
@@ -776,7 +491,6 @@ export default function ClosingsPage() {
           </section>
         </div>
       ) : null}
->>>>>>> origin/feat/web-redesign
 
       <Drawer
         open={!!openId}
@@ -785,52 +499,6 @@ export default function ClosingsPage() {
         onClose={() => setOpenId(null)}
         footer={
           <>
-<<<<<<< HEAD
-            <p className="muted">{detail.note || "Tanpa catatan"}</p>
-            {detail.has_shortage ? (
-              <p className="error">
-                <span className="badge badge-warn">Ada kekurangan</span>{" "}
-                {detail.shortage_note}
-              </p>
-            ) : null}
-            <h2 className="panel-title">Paket</h2>
-            <ul>
-              {(detail.packages ?? []).map((p) => (
-                <li key={p.id}>
-                  {p.menu_name} × {p.qty_paket}
-                </li>
-              ))}
-            </ul>
-            <h2 className="panel-title">Rincian bahan</h2>
-            <ul>
-              {(detail.lines ?? []).map((l) => (
-                <li key={l.id}>
-                  {l.item_sku} — {l.item_name}: {l.qty} {l.unit_code}
-                  {l.shortage_qty > 0 ? (
-                    <>
-                      {" "}
-                      <span className="badge badge-warn">
-                        kurang {l.shortage_qty} {l.unit_code} (dikurangi{" "}
-                        {Math.round((l.qty - l.shortage_qty) * 1000) / 1000})
-                      </span>
-                    </>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-            <div className="drawer-footer">
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => setDetail(null)}
-              >
-                Tutup
-              </button>
-              <Link className="btn btn-ghost" href="/app/history">
-                Lihat riwayat
-              </Link>
-            </div>
-=======
             <LinkButton variant="secondary" href="/app/history">
               Lihat riwayat
             </LinkButton>
@@ -886,7 +554,6 @@ export default function ClosingsPage() {
                 </div>
               </div>
             )}
->>>>>>> origin/feat/web-redesign
           </>
         ) : null}
       </Drawer>

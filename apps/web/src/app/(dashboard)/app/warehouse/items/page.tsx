@@ -11,17 +11,6 @@ import { LocationShape } from "@/components/ui/LocationTag";
 import { Qty } from "@/components/ui/Qty";
 import { UnitInput } from "@/components/ui/UnitInput";
 import { getUser } from "@/lib/auth";
-<<<<<<< HEAD
-import { ApiError } from "@/lib/api";
-import { toastError, toastSuccess } from "@/lib/toast";
-import {
-  Category,
-  Item,
-  Unit,
-  canMutateWarehouse,
-  warehouseApi,
-} from "@/lib/warehouse";
-=======
 import { kitchenApi } from "@/lib/kitchen";
 import { explainMasterError, normalizeSku, suggestSku } from "@/lib/master";
 import { canMutateWarehouse } from "@/lib/rbac";
@@ -34,7 +23,6 @@ function levelClass(qty: number | undefined, min: number): string {
   const level = stockLevel(qty, min);
   return level === "critical" ? "ds-tone-danger" : level === "low" ? "ds-tone-low" : "";
 }
->>>>>>> origin/feat/web-redesign
 
 export default function ItemsPage() {
   const [items, setItems] = useState<Item[]>([]);
@@ -222,20 +210,9 @@ export default function ItemsPage() {
       closeDrawer();
       await load();
     } catch (e) {
-<<<<<<< HEAD
-      if (e instanceof ApiError && e.code === "item_in_use") {
-        const reasons = Array.isArray(e.details)
-          ? (e.details as { keterangan: string }[]).map((d) => `• ${d.keterangan}`)
-          : [];
-        window.alert(`${it.name} tidak bisa dinonaktifkan:\n${reasons.join("\n")}`);
-        return;
-      }
-      toastError(e instanceof Error ? e.message : "Gagal mengubah status");
-=======
       setSaveError(e instanceof Error ? e.message : "Gagal mengubah status");
     } finally {
       setSaving(false);
->>>>>>> origin/feat/web-redesign
     }
   }
 

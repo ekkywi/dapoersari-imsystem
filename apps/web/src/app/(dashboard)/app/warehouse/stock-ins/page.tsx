@@ -50,54 +50,6 @@ export default function StockInsPage() {
   const [saving, setSaving] = useState<"print" | "next" | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [canWrite, setCanWrite] = useState(false);
-<<<<<<< HEAD
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
-  const itemMap = useMemo(
-    () => Object.fromEntries(items.map((it) => [it.id, it])),
-    [items],
-  );
-  // Inactive items cannot receive stock; keep them only for labelling history.
-  const activeItems = useMemo(() => items.filter((it) => it.is_active), [items]);
-  const supplierMap = useMemo(
-    () => Object.fromEntries(suppliers.map((s) => [s.id, s.name])),
-    [suppliers],
-  );
-  const unitMap = useMemo(
-    () => Object.fromEntries(units.map((u) => [u.id, u.code])),
-    [units],
-  );
-  const categoryMap = useMemo(
-    () => Object.fromEntries(categories.map((c) => [c.id, c.name])),
-    [categories],
-  );
-
-  const selectedUnitCode = useMemo(() => {
-    const item = itemMap[itemId];
-    if (!item) return "";
-    return unitMap[item.unit_id] ?? "";
-  }, [itemId, itemMap, unitMap]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => {
-      const item = itemMap[r.item_id];
-      const supplier = r.supplier_id ? (supplierMap[r.supplier_id] ?? "") : "";
-      const unit = item ? (unitMap[item.unit_id] ?? "") : "";
-      const cat =
-        item?.category_id ? (categoryMap[item.category_id] ?? "") : "";
-      const label = item ? `${item.sku} ${item.name}` : r.item_id;
-      return (
-        label.toLowerCase().includes(q) ||
-        supplier.toLowerCase().includes(q) ||
-        unit.toLowerCase().includes(q) ||
-        cat.toLowerCase().includes(q)
-      );
-    });
-  }, [rows, query, itemMap, supplierMap, unitMap, categoryMap]);
-=======
->>>>>>> origin/feat/web-redesign
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -127,17 +79,6 @@ export default function StockInsPage() {
     void load();
   }, [load]);
 
-<<<<<<< HEAD
-  function openCreate() {
-    setItemId(activeItems[0]?.id ?? "");
-    setSupplierId("");
-    setQty("");
-    setNote("");
-    setExpiredAt("");
-    setFormError(null);
-    setDrawerOpen(true);
-  }
-=======
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const supplierById = useMemo(() => new Map(suppliers.map((s) => [s.id, s.name])), [suppliers]);
   const activeItems = useMemo(
@@ -145,7 +86,6 @@ export default function StockInsPage() {
     [items],
   );
   const activeSuppliers = useMemo(() => suppliers.filter((s) => s.is_active), [suppliers]);
->>>>>>> origin/feat/web-redesign
 
   const item = itemById.get(itemId);
   const unit = item ? (unitCode.get(item.unit_id) ?? "") : "";
@@ -245,152 +185,6 @@ export default function StockInsPage() {
               void save("next");
             }}
           >
-<<<<<<< HEAD
-            Muat ulang
-          </button>
-          {canWrite ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={openCreate}
-              disabled={activeItems.length === 0}
-              title={
-                activeItems.length === 0 ? "Belum ada item aktif" : undefined
-              }
-            >
-              Catat persediaan masuk
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      <section className="si-table-card">
-        {loading ? (
-          <div className="si-empty">
-            <p className="muted">Memuat data…</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="si-empty">
-            <p className="si-empty-title">
-              {rows.length === 0 ? "Belum ada transaksi" : "Tidak ada hasil"}
-            </p>
-            <p className="si-empty-desc">
-              {rows.length === 0
-                ? items.length === 0
-                  ? "Belum ada item katalog."
-                  : "Belum ada transaksi persediaan masuk."
-                : "Tidak cocok dengan pencarian."}
-            </p>
-          </div>
-        ) : (
-          <div className="data-table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Waktu</th>
-                  <th>Item</th>
-                  <th>Kategori</th>
-                  <th>Satuan</th>
-                  <th>Pemasok</th>
-                  <th>Qty</th>
-                  <th>ED</th>
-                  <th>Catatan</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r) => {
-                  const item = itemMap[r.item_id];
-                  const unit = item ? (unitMap[item.unit_id] ?? "—") : "—";
-                  const cat =
-                    item?.category_id
-                      ? (categoryMap[item.category_id] ?? "—")
-                      : "—";
-                  return (
-                    <tr key={r.id}>
-                      <td>{formatDateTime(r.created_at)}</td>
-                      <td>
-                        {item ? (
-                          <>
-                            <strong>{item.sku}</strong>
-                            <span className="muted"> — {item.name}</span>
-                          </>
-                        ) : (
-                          r.item_id
-                        )}
-                      </td>
-                      <td>{cat}</td>
-                      <td>{unit}</td>
-                      <td>
-                        {r.supplier_id
-                          ? (supplierMap[r.supplier_id] ?? "—")
-                          : "—"}
-                      </td>
-                      <td>{r.qty}</td>
-                      <td>
-                        {r.expired_at
-                          ? new Date(r.expired_at).toLocaleDateString("id-ID")
-                          : "—"}
-                      </td>
-                      <td>{r.note || "—"}</td>
-                      <td>
-                        <Link
-                          className="btn btn-ghost"
-                          href={`/app/warehouse/stock-ins/${r.id}`}
-                        >
-                          Buka
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <Drawer
-        open={drawerOpen}
-        title="Catat persediaan masuk"
-        description="Item, qty, dan pemasok."
-        onClose={() => setDrawerOpen(false)}
-      >
-        {formError ? <p className="error">{formError}</p> : null}
-        {activeItems.length === 0 ? (
-          <p className="muted">Tambah item katalog terlebih dahulu.</p>
-        ) : (
-          <form className="form" onSubmit={onSubmit}>
-            <div className="field">
-              <label className="label" htmlFor="si-item">
-                Item
-              </label>
-              <select
-                id="si-item"
-                className="input select"
-                value={itemId}
-                onChange={(e) => setItemId(e.target.value)}
-                required
-              >
-                {activeItems.map((it) => {
-                  const unit = unitMap[it.unit_id] ?? "";
-                  return (
-                    <option key={it.id} value={it.id}>
-                      {it.sku} — {it.name}
-                      {unit ? ` (${unit})` : ""}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-            <div className="field">
-              <label className="label" htmlFor="si-supplier">
-                Pemasok
-              </label>
-              <select
-                id="si-supplier"
-                className="input select"
-=======
             <h2 id="form-title" className="ds-card-title">
               Catat penerimaan
             </h2>
@@ -399,7 +193,6 @@ export default function StockInsPage() {
               Pemasok
               <select
                 className="ds-select"
->>>>>>> origin/feat/web-redesign
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
               >
@@ -441,28 +234,6 @@ export default function StockInsPage() {
                   onChange={(e) => setQty(e.target.value)}
                 />
               </label>
-<<<<<<< HEAD
-              <input
-                id="si-qty"
-                className="input"
-                type="number"
-                min={0.001}
-                step="0.001"
-                value={qty}
-                onChange={(e) => setQty(e.target.value)}
-                required
-                autoFocus
-              />
-              {selectedUnitCode ? (
-                <p className="field-hint">
-                  Satuan mengikuti item: {selectedUnitCode}
-                </p>
-              ) : null}
-            </div>
-            <div className="field">
-              <label className="label" htmlFor="si-ed">
-                Kedaluwarsa
-=======
               <label className="ds-field ds-field-sm">
                 Kedaluwarsa <span className="ds-field-hint">Opsional</span>
                 <input
@@ -471,7 +242,6 @@ export default function StockInsPage() {
                   value={expiredAt}
                   onChange={(e) => setExpiredAt(e.target.value)}
                 />
->>>>>>> origin/feat/web-redesign
               </label>
             </div>
 
